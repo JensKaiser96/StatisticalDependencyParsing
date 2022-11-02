@@ -1,0 +1,12 @@
+decoding:
+  - input is a WDG provided by some model
+  - use CLD or Eisner to get MST
+  - return MST
+
+model:
+  - input is a sentence
+  - output is WDG with probabilityes for arcs and lables
+
+graph:
+  - input? init?
+  - multiple edges between two nodes
