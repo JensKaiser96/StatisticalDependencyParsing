@@ -96,11 +96,14 @@ class WeightedDirectedGraph:
 
         changed = True
         while changed:
+            changed = False
             for i in self.node_ids:
                 for j in np.where(t[i] != 0): # indices of all possible paths from i
                     # check for new destinations
+                    if (t[j].max(axis=-1) & np.invert(t[i,j])).any():
+                        changed = True
                     # all of j's possible destinations via any
-                    t[j].max(axis=0)
+                    t[j].max(axis=-1)
                     t[i,j] += t[j].
                     if not (np.)
 
