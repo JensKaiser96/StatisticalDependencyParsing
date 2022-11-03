@@ -87,14 +87,38 @@ class WeightedDirectedGraph:
 
     def get_cycle(self) -> List[int]:
         """
-
+        t[i,j] = [0,0,0,0,1]
         """
+        t = np.zeros((self.number_of_nodes,) * 3, dtype=bool)
+        # t[:] = -np.inf
+        for i in self.node_ids:
+            t[i, i] = self._dependents_list(i)
+
+        changed = True
+        while changed:
+            for i in self.node_ids:
+                for j in np.where(t[i] != 0): # indices of all possible paths from i
+                    # check for new destinations
+                    # all of j's possible destinations via any
+                    t[j].max(axis=0)
+                    t[i,j] += t[j].
+                    if not (np.)
+
+
+
+
+
+
+
+
         childrens_list = {node_id: [] for node_id in self.node_ids}
         node_buffer = Buffer([ROOT])    # buffer that contains the nodes that will be visited next
         active_branch = Buffer([ROOT])  # buffer that contains every parent of the current node
         while node_buffer:
             # add childrens to current buffer
             for node_id in active_branch:
+                node_buffer.pop()
+                node_buffer.add_list(self.get_dependents(active_branch.top))
                 new_childrens = self.get_dependents(active_branch.top)
                 old_childrens = childrens_list[node_id]
                 if any([child in childrens_list[node_id] for child in childrens]):
