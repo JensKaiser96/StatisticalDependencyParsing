@@ -111,23 +111,18 @@ class WeightedDirectedGraph:
 
 
 
+                    self._find_cycle(t[i], i, j)
 
+    def _build_cycle(self, t, i, j) -> List[int]:
+        cycle = []
+        """
+        t[via][to]
+        """
+        previous_node = j
+        while previous_node != i:
+            cycle.append(previous_node)
+            previous_node = t[:, previous_node].argmax()
+        cycle.append(i)
+        cycle.reverse()
+        return cycle
 
-
-        childrens_list = {node_id: [] for node_id in self.node_ids}
-        node_buffer = Buffer([ROOT])    # buffer that contains the nodes that will be visited next
-        active_branch = Buffer([ROOT])  # buffer that contains every parent of the current node
-        while node_buffer:
-            # add childrens to current buffer
-            for node_id in active_branch:
-                node_buffer.pop()
-                node_buffer.add_list(self.get_dependents(active_branch.top))
-                new_childrens = self.get_dependents(active_branch.top)
-                old_childrens = childrens_list[node_id]
-                if any([child in childrens_list[node_id] for child in childrens]):
-                    # found cycle
-                    pass
-                childrens_list[node_id] += childrens
-                node_buffer.add_list(childrens)
-
-        pass
