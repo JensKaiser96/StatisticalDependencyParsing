@@ -107,10 +107,11 @@ class WeightedDirectedGraph:
                     changed = (reachable_from_j & not_connected_from_i_to_j).any()
                     t[i, j] = t[i, j] | reachable_from_j
                     if t[i, :, i].any():
-                        return self._build_cycle(t[i], j)
+                        return self._build_cycle(t[i], i, j)
         return []
 
-    def _build_cycle(self, t, i, j) -> List[int]:
+    @staticmethod
+    def _build_cycle(t, i, j) -> List[int]:
         cycle = []
         """
         t[via][to]
