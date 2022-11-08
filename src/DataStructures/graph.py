@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 import numpy as np
@@ -41,8 +42,9 @@ class WeightedDirectedGraph:
         if not weight:
             raise ValueError("input argument 'weight' must be something else than 0.")
         # make data matrix larger if necessary
-        if max(start_id, end_id) > len(self.data):
-            self._expand_data_table(max(start_id, end_id))
+        largest_index = max(start_id, end_id)
+        if largest_index >= self.number_of_nodes:
+            self._expand_data_table(largest_index + 1)
         self.data[start_id, end_id] = weight
         return self
 
@@ -66,7 +68,8 @@ class WeightedDirectedGraph:
     def _expand_data_table(self, size_new: int):
         size_old = self.number_of_nodes
         size_diff = size_new - size_old
-        if size_diff < 0:
+        print(f"increasing graph data array from '{size_old}' to '{size_new}'")
+        if size_diff <= 0:
             raise ValueError(f"Value of size_new needs to be larger than size_old. {size_new=}, {size_old=}")
         self.data = np.append(self.data, np.zeros((size_diff, size_old)), axis=0)
         self.data = np.append(self.data, np.zeros((size_new, size_diff)), axis=1)
@@ -116,10 +119,14 @@ class WeightedDirectedGraph:
         """
         t[via][to]
         """
+        print(f"building cycle from: {t}, starting at {j}, goint to {i}")
         previous_node = j
-        while previous_node != i:
+        while True:
+            print(f"Adding {previous_node}")
             cycle.append(previous_node)
             previous_node = t[:, previous_node].argmax()
+            if previous_node == i:
+                break
         cycle.append(i)
         cycle.reverse()
         return cycle
