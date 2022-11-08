@@ -90,6 +90,7 @@ class WeightedDirectedGraph:
         t[i,j] = [0,0,0,0,1]
         """
         t = np.zeros((self.number_of_nodes,) * 3, dtype=bool)
+        # t[:] = -np.inf
         for i in self.node_ids:
             t[i, i] = self._dependents_list(i)
 
@@ -109,5 +110,15 @@ class WeightedDirectedGraph:
                         return self._build_cycle(t[i], j)
         return []
 
-    def _build_cycle(self, t: np.ndarray, j: int) -> List[int]:
-        return []
+    def _build_cycle(self, t, i, j) -> List[int]:
+        cycle = []
+        """
+        t[via][to]
+        """
+        previous_node = j
+        while previous_node != i:
+            cycle.append(previous_node)
+            previous_node = t[:, previous_node].argmax()
+        cycle.append(i)
+        cycle.reverse()
+        return cycle
