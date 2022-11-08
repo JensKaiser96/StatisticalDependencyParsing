@@ -90,29 +90,24 @@ class WeightedDirectedGraph:
         t[i,j] = [0,0,0,0,1]
         """
         t = np.zeros((self.number_of_nodes,) * 3, dtype=bool)
-        # t[:] = -np.inf
         for i in self.node_ids:
             t[i, i] = self._dependents_list(i)
 
         changed = True
-        while changed:
+        found_loop = False
+        while changed and not found_loop:
             changed = False
             for i in self.node_ids:
-                for j in np.where(t[i] != 0): # indices of all possible paths from i
-                    # check for new destinations
-                    if (t[j].max(axis=-1) & np.invert(t[i,j])).any():
-                        changed = True
-                    # all of j's possible destinations via any
-                    t[j].max(axis=-1)
-                    t[i,j] += t[j].
-                    if not (np.)
-
-
-
-
-
-
-
+                reachable_from_i = np.where(t[i] != 0)
+                for j in reachable_from_i:  # indices of all possible paths from i
+                    # check for new destinations, if at any position 1 but  0 in that position
+                    reachable_from_j = t[j].max(axis=-1)
+                    not_connected_from_i_to_j = np.invert(t[i, j])
+                    changed = (reachable_from_j & not_connected_from_i_to_j).any()
+                    t[i, j] = t[i, j] | reachable_from_j
+                    if t[i, :, i].any():
+                        return self._build_cycle(t[i], j)
+        return []
 
         childrens_list = {node_id: [] for node_id in self.node_ids}
         node_buffer = Buffer([ROOT])    # buffer that contains the nodes that will be visited next
