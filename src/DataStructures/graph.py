@@ -96,32 +96,38 @@ class WeightedDirectedGraph:
         # t[:] = -np.inf
         for i in self.node_ids:
             t[i, i] = self._dependents_list(i)
+        print(f"initial t:\n{t}")
 
         changed = True
-        found_loop = False
-        while changed and not found_loop:
+        while changed:
             changed = False
             for i in self.node_ids:
-                reachable_from_i = np.where(t[i] != 0)
+                print(f"({i}/{self.number_of_nodes - 1})")
+                reachable_from_i = np.where(t[i])[1]
+                print(f"\t{i} -> {reachable_from_i}")
                 for j in reachable_from_i:  # indices of all possible paths from i
+                    print(f"\t\t({j}/{reachable_from_i})")
                     # check for new destinations, if at any position 1 but  0 in that position
-                    reachable_from_j = t[j].max(axis=-1)
+                    reachable_from_j = t[j].max(axis=0)
+                    print(f"\t\t{j} -> {reachable_from_j} | {t[j]}")
                     not_connected_from_i_to_j = np.invert(t[i, j])
                     changed = (reachable_from_j & not_connected_from_i_to_j).any()
+                    print(f"\t\told t[{i},{j}]: {t[i,j]}")
                     t[i, j] = t[i, j] | reachable_from_j
+                    print(f"\t\tnew t[{i},{j}]: {t[i, j]}")
                     if t[i, :, i].any():
                         return self._build_cycle(t[i], i, j)
         return []
 
     @staticmethod
-    def _build_cycle(t, i, j) -> List[int]:
+    def _build_cycle(t: np.ndarray, i: int, j: int) -> List[int]:
         cycle = []
         """
         t[via][to]
         """
-        print(f"building cycle from: {t}, starting at {j}, goint to {i}")
+        print(f"building cycle from: \n{t},\n starting at {j}, goint to {i}")
         previous_node = j
-        while True:
+        for _ in range(len(t)):
             print(f"Adding {previous_node}")
             cycle.append(previous_node)
             previous_node = t[:, previous_node].argmax()
