@@ -106,18 +106,33 @@ class WeightedDirectedGraph:
                 reachable_from_i = np.where(t[i])[1]
                 print(f"\t{i} -> {reachable_from_i}")
                 for j in reachable_from_i:  # indices of all possible paths from i
-                    print(f"\t\t({j}/{reachable_from_i})")
+                    # print(f"\t\t({j}/{reachable_from_i})")
                     # check for new destinations, if at any position 1 but  0 in that position
                     reachable_from_j = t[j].max(axis=0)
-                    print(f"\t\t{j} -> {reachable_from_j} | {t[j]}")
+                    print(f"\t\t{j} -> {np.where(reachable_from_j)[0]}")
                     not_connected_from_i_to_j = np.invert(t[i, j])
                     changed = (reachable_from_j & not_connected_from_i_to_j).any()
-                    print(f"\t\told t[{i},{j}]: {t[i,j]}")
+                    print(f"\t\told t[{i},{j}]: {np.where(t[i,j])[0]}")
                     t[i, j] = t[i, j] | reachable_from_j
-                    print(f"\t\tnew t[{i},{j}]: {t[i, j]}")
+                    print(f"\t\tnew t[{i},{j}]: {np.where(t[i, j])[0]}")
                     if t[i, :, i].any():
-                        return self._build_cycle(t[i], i, j)
-        return []
+                        return self.path(i, j)[:-1] + self.path(j, i)[:-1]  # exclude last elements to avoid duplicates
+                        # return self._build_cycle(t, i, j)
+        return []  # no cycle found
+
+    def path(self, start: int, end: int) -> List[int]:
+        # todo implement
+        return [start, end]
+
+    def find_cycle(self):
+        paths = {node_id: [[dependent] for dependent in self.get_dependents(node_id)] for node_id in self.node_ids}
+        new_path = True
+        while new_path:
+            new_path = False
+            for node, path_list in paths.items():
+                for i, path in enumerate(path_list):
+                    for node_visited
+                paths[node]
 
     @staticmethod
     def _build_cycle(t: np.ndarray, i: int, j: int) -> List[int]:
