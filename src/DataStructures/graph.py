@@ -68,7 +68,6 @@ class WeightedDirectedGraph:
     def _expand_data_table(self, size_new: int):
         size_old = self.number_of_nodes
         size_diff = size_new - size_old
-        print(f"increasing graph data array from '{size_old}' to '{size_new}'")
         if size_diff <= 0:
             raise ValueError(f"Value of size_new needs to be larger than size_old. {size_new=}, {size_old=}")
         self.data = np.append(self.data, np.zeros((size_diff, size_old)), axis=0)
@@ -80,7 +79,7 @@ class WeightedDirectedGraph:
                 return True
         return False
 
-    def is_well_formed(self) -> bool:
+    def is_well_formed_tree(self) -> bool:
         return not (
                 self.has_head(ROOT) or
                 self.number_of_edges != self.number_of_nodes - 1 or
@@ -88,66 +87,23 @@ class WeightedDirectedGraph:
                 any([len(self._heads_list(node_id)) > 1 for node_id in self.node_ids])
         )
 
-    def get_cycle(self) -> List[int]:
-        """
-        t[i,j] = [0,0,0,0,1]
-        """
-        t = np.zeros((self.number_of_nodes,) * 3, dtype=bool)
-        # t[:] = -np.inf
-        for i in self.node_ids:
-            t[i, i] = self._dependents_list(i)
-        print(f"initial t:\n{t}")
-
-        changed = True
-        while changed:
-            changed = False
-            for i in self.node_ids:
-                print(f"({i}/{self.number_of_nodes - 1})")
-                reachable_from_i = np.where(t[i])[1]
-                print(f"\t{i} -> {reachable_from_i}")
-                for j in reachable_from_i:  # indices of all possible paths from i
-                    # print(f"\t\t({j}/{reachable_from_i})")
-                    # check for new destinations, if at any position 1 but  0 in that position
-                    reachable_from_j = t[j].max(axis=0)
-                    print(f"\t\t{j} -> {np.where(reachable_from_j)[0]}")
-                    not_connected_from_i_to_j = np.invert(t[i, j])
-                    changed = (reachable_from_j & not_connected_from_i_to_j).any()
-                    print(f"\t\told t[{i},{j}]: {np.where(t[i,j])[0]}")
-                    t[i, j] = t[i, j] | reachable_from_j
-                    print(f"\t\tnew t[{i},{j}]: {np.where(t[i, j])[0]}")
-                    if t[i, :, i].any():
-                        return self.path(i, j)[:-1] + self.path(j, i)[:-1]  # exclude last elements to avoid duplicates
-                        # return self._build_cycle(t, i, j)
-        return []  # no cycle found
-
-    def path(self, start: int, end: int) -> List[int]:
-        # todo implement
-        return [start, end]
-
     def find_cycle(self):
-        paths = {node_id: [[dependent] for dependent in self.get_dependents(node_id)] for node_id in self.node_ids}
-        new_path = True
-        while new_path:
-            new_path = False
-            for node, path_list in paths.items():
-                for i, path in enumerate(path_list):
-                    for node_visited
-                paths[node]
+        paths = {node_id: [[node_id, dependent] for dependent in self.get_dependents(node_id)] for node_id in self.node_ids}
 
-    @staticmethod
-    def _build_cycle(t: np.ndarray, i: int, j: int) -> List[int]:
-        cycle = []
-        """
-        t[via][to]
-        """
-        print(f"building cycle from: \n{t},\n starting at {j}, goint to {i}")
-        previous_node = j
-        for _ in range(len(t)):
-            print(f"Adding {previous_node}")
-            cycle.append(previous_node)
-            previous_node = t[:, previous_node].argmax()
-            if previous_node == i:
-                break
-        cycle.append(i)
-        cycle.reverse()
-        return cycle
+        for _ in self.node_ids:   # any cycle is found after N iterations
+            for node, old_paths in paths.items():
+                new_paths = []
+                for old_path in old_paths:
+                    new_destinations = paths[old_path[-1]]
+                    for new_destination in new_destinations:
+                        print(f"building new path:\n{old_path}\n{new_destination}\n")
+                        new_path = old_path[:-1] + new_destination
+                        if node in new_path[1:]:
+                            print(f"found cycle: {new_path}")
+                            cycle = new_path[:new_path.index(node, 1)]
+                            return cycle
+                        print(f"({node}):\n{old_path}\n{new_path}")
+                        new_paths.append(new_path)
+                paths[node] = new_paths
+        return []
+
