@@ -2,12 +2,30 @@ from src.tools.io import read_file
 from src.tools.measurements import UAS, LAS
 
 
-def main():
-    gold_tree_bank = read_file("data/english/dev/wsj_dev.conll06.gold")
-    pred_tree_bank = read_file("data/english/dev/wsj_dev.conll06.pred")
+class Test:
+    a = [1,2,3,4]
 
-    print(f"UAS: {UAS.__call__(gold_tree_bank, pred_tree_bank)}")
-    print(f"LAS: {LAS.__call__(gold_tree_bank, pred_tree_bank)}")
+    """
+    def __iter__(self):
+        self.iter_index = 0
+        return self
+
+    def __next__(self):
+        if self.iter_index < len(self.a):
+            value = self.a[self.iter_index]
+            self.iter_index += 1
+            return value
+        else:
+            raise StopIteration
+    """
+
+    def __getitem__(self, item):
+        return self.a[item]
+
+
+def main():
+    for element in Test():
+        print(element)
 
 
 if __name__ == '__main__':
