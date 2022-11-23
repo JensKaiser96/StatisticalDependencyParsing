@@ -162,6 +162,18 @@ class WeightedDirectedGraph:
                 paths[node] = new_paths
         return []
 
+    def cycle_weight_minus_node(self, cycle: List[int], node_id: int) -> float:
+        weight = 0
+        for i, current_node in enumerate(cycle):
+            next_node = cycle[(i + 1) % len(cycle)]  # wrapping to 0 at the end of the list
+            if next_node == node_id:
+                continue
+            weight += self.get_edge_weight(current_node, next_node)
+        return weight
+
+    def weight_to_cycle(self, cycle: List[int], start_id: int, end_id: int) -> float:
+        return self.get_edge_weight(start_id, end_id) + self.cycle_weight_minus_node(cycle, end_id)
+
     def contract(self, cycle: List[int]):
         """
         1: function CONTRACT(G = 〈V , A〉,C,σ):
@@ -188,5 +200,3 @@ class WeightedDirectedGraph:
         15: return GC
         16: end function
         """
-
-

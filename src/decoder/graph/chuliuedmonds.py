@@ -15,7 +15,7 @@ def mst(input_graph: WDGraph) -> WDGraph:
 
     contracted_graph = contract_graph(input_graph, cycle)
     y = mst(contracted_graph)
-    return resolve_cycle(y)
+    return resolve_cycle(y, cycle)
 
 
 def reduce_graph(input_graph: WDGraph) -> WDGraph:
@@ -50,31 +50,48 @@ def contract_graph(input_graph: WDGraph, cycle: List[int]) -> WDGraph:
         14: end for
         15: return GC
         16: end function
+
+        Same as input_graph but
+           remove edges:
+              going to the cycle
+              leaving the cycle
+           add/keep:
+              max incomming edge
+              max outgoing  edge to each node outside
     """
     # create new graph without cycle.
     output_graph = input_graph.copy()
+    for node_id in output_graph.node_ids:
+        for dependent in output_graph.get_dependents(node_id):
+            if dependent in cycle:
+                output_graph.remove_edge(node_id, dependent)
     output_graph.cut_nodes(cycle)
 
+    # compute weights from and to C
+    max_in_weight = 0
+    max_in_weight_from = 0
+    max_in_weight_to = 0
     for node_id in input_graph.node_ids:
         if node_id in cycle:
-            pass
-            # compute scores for arcs entering C
-        else:
             # compute scores for arcs leaving C
             output_graph.add_edge(input_graph.get_max_head(node_id, cycle), node_id)
+        else:
+            # compute scores for arcs entering C
+            for dependent in input_graph.get_dependents(node_id):
+                if dependent not in cycle:
+                    continue
+                weight = input_graph.weight_to_cycle(cycle, node_id, dependent)
+                if weight > max_in_weight:
+                    max_in_weight = weight
+                    max_in_weight_from = node_id
+                    max_in_weight_to = dependent
+                input_graph.remove_edge(node_id, dependent)
+        output_graph.add_edge(max_in_weight_from, max_in_weight_to, max_in_weight)
+
+    return output_graph
 
 
-
-    max_incomming_arc_weight = 0
-    max_incomming_arc_head_id = 0
-    for node_id in cycle:
-        input_graph.get_max_head()
-        max_incomming_arc_weight
-
-    return input_graph
-
-
-def resolve_cycle(input_graph: WDGraph) -> WDGraph:
+def resolve_cycle(input_graph: WDGraph, cycle: List[int]) -> WDGraph:
     """
         1: function RESOLVECYCLE(y ,C):
         2: Find a vertex vd in C s. t. 〈v ′
@@ -89,4 +106,3 @@ def resolve_cycle(input_graph: WDGraph) -> WDGraph:
 
 if __name__ == '__main__':
     mst(WDGraph())
-
