@@ -40,7 +40,7 @@ class WeightedDirectedGraphTest(unittest.TestCase):
         wdg4.add_edge(1, 2)
         wdg4.add_edge(2, 3)
         wdg4.add_edge(1, 3)
-        self.assertEqual([], wdg4.get_cycle())
+        self.assertEqual([], wdg4.find_cycle())
 
 
 if __name__ == '__main__':

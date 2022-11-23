@@ -22,10 +22,26 @@ class WeightedDirectedGraph:
     def __getitem__(self, item):
         return self.data[item]
 
+    def __str__(self):
+        return str(self.data)
+
     def copy(self):
         copy = WeightedDirectedGraph()
         copy.data = self.data.copy()
         return copy
+
+    def random(self, size: int, make0root: bool = True) -> "WeightedDirectedGraph":
+        if (self.data != np.zeros((1, 1))).all():
+            raise ValueError("Weights are already initialized, this method is for creating a random graph from scratch")
+        self.data = np.random.random((size, size))
+        np.fill_diagonal(self.data, 0)
+        if make0root:
+            self.make_0_root()
+        return self
+
+    def make_0_root(self):
+        self.data[:, 0] = 0
+        return self
 
     @property
     def number_of_nodes(self) -> int:
@@ -87,9 +103,6 @@ class WeightedDirectedGraph:
             raise ValueError(f"No edge from '{start_id}' to '{end_id}' in graph.")
         return self.data[start_id, end_id]
 
-    def copy_edge(self, start_id: int, end_id: int) -> Dict["str":int, str:int, str:float]:
-        return {"start_id": start_id, "end_id": end_id, "weight": self.get_edge_weight(start_id, end_id)}
-
     def get_max_head(self, node_id: int, cycle: List[int] = None) -> int | None:
         if not self.has_head(node_id):
             return None
@@ -135,12 +148,15 @@ class WeightedDirectedGraph:
         return False
 
     def is_well_formed_tree(self) -> bool:
-        return not (
-                self.has_head(ROOT) or
-                self.number_of_edges != self.number_of_nodes - 1 or
-                self.has_dangling_nodes() or
-                any([len(self._heads_list(node_id)) > 1 for node_id in self.node_ids])
-        )
+        root_has_head = self.has_head(ROOT)
+        num_edges_vs_num_nodes = (self.number_of_edges != self.number_of_nodes - 1)
+        dangling_nodes = self.has_dangling_nodes()
+        more_than_one_head = any([len(self._heads_list(node_id)) > 1 for node_id in self.node_ids])
+
+        if not (root_has_head or num_edges_vs_num_nodes or dangling_nodes or more_than_one_head):
+            print(f"false because of:\n{root_has_head=}\n{num_edges_vs_num_nodes}\n{dangling_nodes}\n{more_than_one_head}")
+            return False
+        return True
 
     def find_cycle(self):
         paths = {node_id: [[node_id, dependent] for dependent in self.get_dependents(node_id)] for node_id in self.node_ids}
