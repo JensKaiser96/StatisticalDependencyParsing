@@ -1,7 +1,10 @@
 import logging
-from typing import List, Dict
+import math
+from typing import List
+import matplotlib.pyplot as plt
 
 import numpy as np
+from matplotlib.patches import FancyArrowPatch, ConnectionStyle
 
 ROOT = 0
 
@@ -25,6 +28,9 @@ class WeightedDirectedGraph:
     def __str__(self):
         return str(self.data)
 
+    def __eq__(self, other: "WeightedDirectedGraph"):
+        return all(self.data == other.data)
+
     def copy(self):
         copy = WeightedDirectedGraph()
         copy.data = self.data.copy()
@@ -37,6 +43,38 @@ class WeightedDirectedGraph:
         np.fill_diagonal(self.data, 0)
         if make0root:
             self.make_0_root()
+        return self
+
+    def draw(self):
+        figure, axis = plt.subplots()
+
+        # axis.set_aspect(1)
+        # e^(2pif)
+
+        def pos(node_id: int) -> (float, float):
+            phi = 2 * math.pi / self.number_of_nodes
+            x = math.cos(phi * node_id)
+            y = math.sin(phi * node_id)
+            return x, y
+
+        for node_id in self.node_ids:
+            plt.text(pos(node_id)[0], pos(node_id)[1], node_id,
+                     verticalalignment='center', horizontalalignment='center',
+                     bbox=dict(boxstyle="circle"))
+
+            for dependent in self.get_dependents(node_id):
+                axis.annotate("",
+                              xy=pos(dependent), xycoords='data',
+                              xytext=pos(node_id), textcoords='data',
+                              arrowprops=dict(arrowstyle="->",
+                                              connectionstyle=ConnectionStyle("Arc3, rad=0.2"),
+                                              shrinkA=10,
+                                              shrinkB=10),
+                              )
+        plt.xlim(-1, 1)
+        plt.ylim(-1, 1)
+        axis.axis('off')
+        plt.show()
         return self
 
     def make_0_root(self):
@@ -88,12 +126,18 @@ class WeightedDirectedGraph:
     def remove_all_heads_but_max(self, node_id: int, cycle: List[int] = None):
         # safe index and value
         max_head_id = self.get_max_head(node_id, cycle)
+        if max_head_id is None:
+            return
         max_head_value = self.data[max_head_id, node_id]
+
+        print(f"Remove all but max head:\n {node_id=}/{cycle=}\t{max_head_id=}/{max_head_value=}")
 
         # set all to 0
         if cycle is None:
+            print(f"Non zeros: {np.nonzero(self.data[:, node_id])[0]}")
             self.data[:, node_id] = 0
         else:
+            print(f"Non zeros: {np.nonzero(self.data[cycle, node_id])[0]}")
             self.data[cycle, node_id] = 0
         self.data[max_head_id, node_id] = max_head_value  # restore value at index
         return self
@@ -135,8 +179,8 @@ class WeightedDirectedGraph:
     def has_head(self, node_id: int) -> bool:
         return bool(self._heads_list(node_id).max())
 
-    def get_heads(self, node_id: int) -> List[int]:
-        return list(self._heads_list(node_id))
+    def get_heads(self, node_id: int) -> np.ndarray[int]:
+        return np.nonzero(self._heads_list(node_id))[0]
 
     def get_dependents(self, node_id: int) -> np.ndarray[int]:
         return np.nonzero(self._dependents_list(node_id))[0]
@@ -154,26 +198,26 @@ class WeightedDirectedGraph:
         more_than_one_head = any([len(self._heads_list(node_id)) > 1 for node_id in self.node_ids])
 
         if not (root_has_head or num_edges_vs_num_nodes or dangling_nodes or more_than_one_head):
-            print(f"false because of:\n{root_has_head=}\n{num_edges_vs_num_nodes}\n{dangling_nodes}\n{more_than_one_head}")
+            print(
+                f"false because of:\n{root_has_head=}\n{num_edges_vs_num_nodes}\n{dangling_nodes}\n{more_than_one_head}")
             return False
         return True
 
     def find_cycle(self):
-        paths = {node_id: [[node_id, dependent] for dependent in self.get_dependents(node_id)] for node_id in self.node_ids}
+        paths = {node_id: [[node_id, dependent] for dependent in self.get_dependents(node_id)] for node_id in
+                 self.node_ids}
 
-        for _ in self.node_ids:   # any cycle is found after N iterations
+        for _ in self.node_ids:  # any cycle is found after N iterations
             for node, old_paths in paths.items():
                 new_paths = []
                 for old_path in old_paths:
                     new_destinations = paths[old_path[-1]]
                     for new_destination in new_destinations:
-                        print(f"building new path:\n{old_path}\n{new_destination}\n")
                         new_path = old_path[:-1] + new_destination
                         if node in new_path[1:]:
-                            print(f"found cycle: {new_path}")
                             cycle = new_path[:new_path.index(node, 1)]
+                            print(f"Found cycle: {cycle}")
                             return cycle
-                        print(f"({node}):\n{old_path}\n{new_path}")
                         new_paths.append(new_path)
                 paths[node] = new_paths
         return []
@@ -190,29 +234,6 @@ class WeightedDirectedGraph:
     def weight_to_cycle(self, cycle: List[int], start_id: int, end_id: int) -> float:
         return self.get_edge_weight(start_id, end_id) + self.cycle_weight_minus_node(cycle, end_id)
 
-    def contract(self, cycle: List[int]):
-        """
-        1: function CONTRACT(G = 〈V , A〉,C,σ):
-        2: GC = G − C . subgraph of G excluding nodes in C
-        3: Add vc to represent C . New node
-        4: . Compute scores for arcs leaving vc
-        5: for vd ∈ V − C : ∃v ′
-        h ∈C 〈v ′
-        h, vd 〉 ∈ A do
-        6: Add 〈vc , vd 〉 to GC with σ(〈vc , vd 〉) = maxv ′
-        h ∈C σ(〈v ′
-        h, vd 〉
-        7: end for
-        8: . Compute scores for arcs entering vc
-        9: for vh ∈ V − C : ∃v ′
-        d ∈C 〈vh, v ′
-        d 〉 ∈ A do
-        10: Add 〈vh, vc 〉 to GC with
-        11: σ(〈vh, vc 〉) = maxvd ∈C [σ(〈vh, vd 〉) + σ(C) − σ(〈h(vd ), vd 〉)]
-        12: where h(vd ) is the head of vd in C
-        13: and σ(C) = ∑
-        vt ∈C σ(h(vt ), vt )
-        14: end for
-        15: return GC
-        16: end function
-        """
+
+if __name__ == '__main__':
+    wdg = WeightedDirectedGraph().random(7).draw()

@@ -6,18 +6,24 @@ from src.DataStructures.graph import WeightedDirectedGraph as WDGraph
 LOGGER = Logger(__name__)
 
 
-def mst(input_graph: WDGraph) -> WDGraph:
+def mst(graph: WDGraph, recursion_depth=-1) -> WDGraph:
+    if recursion_depth < 0:
+        recursion_depth = graph.number_of_nodes ** 2
+    if recursion_depth == 0:
+        raise RecursionError(f"Recursion Error")
     """
     Chu-Liu-Edmonds Algorithm to get the maximal spanning tree for a given graph
     see. https://ilias3.uni-stuttgart.de/goto_Uni_Stuttgart_file_3126280_download.html, slide 21
     """
-    reduced_graph = reduce_graph(input_graph)
+    reduced_graph = reduce_graph(graph)
     cycle = reduced_graph.find_cycle()
     if not cycle:
         return reduced_graph
 
-    contracted_graph, (cycle_breaker_from, cycle_breaker_to) = contract_graph(input_graph, cycle)
-    y = mst(contracted_graph)
+    contracted_graph, (cycle_breaker_from, cycle_breaker_to) = contract_graph(graph, cycle)
+    print(f"Breaking cycle by removing edge ({cycle_breaker_from},{cycle_breaker_to})")
+    return contracted_graph.remove_edge(cycle_breaker_from, cycle_breaker_to)
+    y = mst(contracted_graph, recursion_depth - 1)
     # contract graph
     return y.remove_edge(cycle_breaker_from, cycle_breaker_to)
 
@@ -39,7 +45,7 @@ def contract_graph(input_graph: WDGraph, cycle: List[int]) -> Tuple[WDGraph, Tup
           max incomming edge
           max outgoing  edge to each node outside
     """
-    print(f"Contracting: \n{input_graph}\nto:\n")
+    # print(f"Contracting: \n{input_graph}\nto:\n")
     # compute weights from and to C
     max_in_weight_summed = 0
     max_in_weight_original = 0
@@ -69,10 +75,12 @@ def contract_graph(input_graph: WDGraph, cycle: List[int]) -> Tuple[WDGraph, Tup
         input_graph.add_edge(max_in_weight_from, max_in_weight_to, max_in_weight_original)
 
     # calculate which edge breaks the cycle
+    #print(f"Computing which edge to remove to break cycle:\n"
+    #      f"{input_graph.get_heads(max_in_weight_to)} >-> {cycle}")
     for head in input_graph.get_heads(max_in_weight_to):
         if head in cycle:
             cycle_breaker_from = head
-    print(input_graph)
+    #print(input_graph)
     return input_graph, (cycle_breaker_from, max_in_weight_to)
 
 
@@ -92,7 +100,7 @@ def resolve_cycle(input_graph: WDGraph, cycle_breaker_from ) -> WDGraph:
 if __name__ == '__main__':
     for i in range(2, 20):
             wdg = WDGraph().random(i)
-            # print(wdg)
+            wdg.draw()
             tree = mst(wdg)
-            print(tree)
+            tree.draw()
             print(tree.is_well_formed_tree())
