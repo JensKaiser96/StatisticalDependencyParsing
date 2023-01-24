@@ -10,6 +10,9 @@ class Buffer:
         else:
             self.buffer = []
 
+    def __bool__(self):
+        return bool(self.buffer)
+
     @property
     def top(self):
         return self.buffer[0]
