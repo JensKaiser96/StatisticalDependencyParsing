@@ -1,5 +1,3 @@
-from enum import Enum
-
 import numpy as np
 from typing import List
 
@@ -7,98 +5,70 @@ from src.DataStructures.graph import WeightedDirectedGraph as WDG
 from src.DataStructures.buffer import Buffer
 
 
-class StepType(Enum):
-    OpenRight = 0
-    OpenLeft = 1
-    ClosedRight = 2
-    ClosedLeft = 3
+OpenRight = 0
+OpenLeft = 1
+ClosedRight = 2
+ClosedLeft = 3
 
 
+def eisner(sentence: List[str], sigma: np.ndarray):
+    paths = calculate_max_tree(sentence, sigma)
+    return create_tree(len(sentence), paths)
 
 
 def calculate_max_tree(sentence: List[str], sigma: np.ndarray):
     n = len(sentence)
-    scores_open_right = np.zeros((n, n))
-    scores_open_left = np.zeros((n, n))
-    scores_closed_right = np.zeros((n, n))
-    scores_closed_left = np.zeros((n, n))
+    scores = np.zeros((4, n, n))
+    paths = np.zeros((4, n, n))
 
-    path_open_right = np.zeros((n, n))
-    path_open_left = np.zeros((n, n))
-    path_closed_right = np.zeros((n, n))
-    path_closed_left = np.zeros((n, n))
+    def update_cell(step_type: int):
+        if score > scores[step_type, s, t]:
+            scores[step_type, s, t] = score
+            paths[step_type, s, t] = q
 
     for m in range(1, n+1):
         for s in range(0, n-m):
             t = s + m
-            max_open_right = 0
-            for q in range(s, t):
-                cur_open_right = scores_closed_left[s, q] + scores_closed_right[q+1, t] + sigma[t, s]
-                if cur_open_right > max_open_right:
-                    max_open_right = cur_open_right
-                    path_open_right[s, t] = q
-            scores_open_right[s, t] = max_open_right
 
-            max_open_left = 0
             for q in range(s, t):
-                cur_open_left = scores_closed_left[s, q] + scores_closed_right[q+1, t] + sigma[s, t]
-                if cur_open_left > max_open_left:
-                    max_open_left = cur_open_left
-                    path_open_left[s, t] = q
-            scores_open_left[s, t] = max_open_left
+                score = scores[ClosedLeft, s, q] + scores[ClosedRight, q+1, t] + sigma[t, s]
+                update_cell(OpenRight)
 
-            max_closed_right = 0
             for q in range(s, t):
-                cur_closed_right = scores_closed_right[s, q] + scores_open_right[q, t]
-                if cur_closed_right > max_closed_right:
-                    max_closed_right = cur_closed_right
-                    path_closed_right[s, t] = q
-            scores_closed_right[s, t] = max_closed_right
+                score = scores[ClosedLeft, s, q] + scores[ClosedRight] + sigma[s, t]
+                update_cell(OpenLeft)
 
-            max_closed_left = 0
+            for q in range(s, t):
+                score = scores[ClosedRight, s, q] + scores[OpenRight, q, t]
+                update_cell(ClosedRight)
+
             for q in range(s+1, t+1):
-                cur_closed_left = scores_open_left[s, q] + scores_closed_left[q, t]
-                if cur_closed_left > max_closed_left:
-                    max_closed_left = cur_closed_left
-                    path_closed_left[s, t] = q
-            scores_closed_left[s, t] = max_closed_left
-    return path_open_right, path_open_left, path_closed_right, path_closed_left
+                score = scores[OpenLeft, s, q] + scores[ClosedLeft, q, t]
+                update_cell(ClosedLeft)
+    return paths
 
 
-def create_tree(n, path_open_right, path_open_left, path_closed_right, path_closed_left):
+def create_tree(n, paths):
     tree = WDG()
+    buffer = Buffer([(ClosedLeft, 0, n, paths[ClosedLeft, 0, n])])
 
-    class Step:
-        type_: StepType
-        s: int
-        t: int
-        q: int
-
-        def __init__(self, type_: StepType, s: int, t: int, q: int):
-            self.type_ = type_
-            self.s = s
-            self.t = t
-            self.q = q
-
-    expand_buffer = Buffer([Step(StepType.ClosedLeft, 0, n, path_closed_left[0, n])])
-    while expand_buffer:
-        current_step = expand_buffer.pop()
-        s = current_step.s
-        t = current_step.t
+    while buffer:
+        step, s, t, q = buffer.pop()
         if s == t:
             continue
-        q = current_step.q
-        if current_step.type_ == StepType.OpenRight:
+        q = step.q
+        if step == OpenRight:
             tree.add_edge(t, s)
-            expand_buffer.add(Step(StepType.ClosedLeft, s, q, path_open_right[s, q]))
-            expand_buffer.add(Step(StepType.ClosedRight, q+1, t, path_open_right[q+1, t]))
-        if current_step.type_ == StepType.OpenLeft:
+            buffer.add((ClosedLeft, s, q, paths[OpenRight, s, q]))
+            buffer.add((ClosedRight, q+1, t, paths[OpenRight, q+1, t]))
+        if step == OpenLeft:
             tree.add_edge(s, t)
-            expand_buffer.add(Step(StepType.ClosedLeft, s, q, path_open_left[s, q]))
-            expand_buffer.add(Step(StepType.ClosedRight, q+1, t, path_open_left[q+1, t]))
-        if current_step.type_ == StepType.ClosedRight:
-            expand_buffer.add(Step(StepType.ClosedRight, s, q, path_closed_right[s, q]))
-            expand_buffer.add(Step(StepType.OpenRight, q, t, path_open_right[q, t]))
-        if current_step.type_ == StepType.ClosedLeft:
-            expand_buffer.add(Step(StepType.ClosedLeft, s, q, path_closed_left[s, q]))
-            expand_buffer.add(Step(StepType.OpenLeft, q, t, path_open_left[q, t]))
+            buffer.add((ClosedLeft, s, q, paths[OpenLeft, s, q]))
+            buffer.add((ClosedRight, q+1, t, paths[OpenLeft, q+1, t]))
+        if step == ClosedRight:
+            buffer.add((ClosedRight, s, q, paths[ClosedRight, s, q]))
+            buffer.add((OpenRight, q, t, paths[OpenRight, q, t]))
+        if step == ClosedLeft:
+            buffer.add((ClosedLeft, s, q, paths[ClosedLeft, s, q]))
+            buffer.add((OpenLeft, q, t, paths[OpenLeft, q, t]))
+    return tree
