@@ -38,9 +38,8 @@ LAS = LASMeasure()
 
 
 if __name__ == '__main__':
-    from src.tools.io import read_file
-    gold_tree_bank = read_file("data/english/dev/wsj_dev.conll06.gold")
-    pred_tree_bank = read_file("data/english/dev/wsj_dev.conll06.pred")
+    gold_tree_bank = TreeBank.from_file("./../../data/english/dev/wsj_dev.conll06.gold")
+    pred_tree_bank = TreeBank.to_file("./../../data/english/dev/wsj_dev.conll06.pred")
 
-    print(f"UAS: {UAS.__call__(gold_tree_bank, pred_tree_bank)}")
-    print(f"LAS: {LAS.__call__(gold_tree_bank, pred_tree_bank)}")
+    print(f"UAS: {UAS(gold_tree_bank, pred_tree_bank)}")
+    print(f"LAS: {LAS(gold_tree_bank, pred_tree_bank)}")
