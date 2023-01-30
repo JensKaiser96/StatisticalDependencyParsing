@@ -68,6 +68,12 @@ class Sentence:
     def __init__(self, tokens: List[Token] = None):
         self.tokens = tokens if tokens else []
 
+    def __getitem__(self, item):
+        return self.tokens[item]
+
+    def __len__(self):
+        return len(self.tokens)
+
     def add_token(self, token: Token):
         self.tokens.append(token)
 
@@ -76,12 +82,39 @@ class Sentence:
 class TreeBank:
     sentences: List[Sentence]
 
+    def __init__(self, sentences: List[Sentence] = None):
+        self.sentences = sentences if sentences else []
+
+    def __getitem__(self, item):
+        return self.sentences[item]
+
+    def __len__(self):
+        return len(self.sentences)
+
+    @staticmethod
+    def from_file(path: str):
+        tree_bank = TreeBank()
+        current_sentence = Sentence()
+        with open(path, "r", encoding="utf-8") as f_in:
+            for line in f_in:
+                line = line.strip()
+                if line:
+                    current_sentence.add_token(Token(line))
+                else:
+                    tree_bank.add_sentence(current_sentence)
+                    current_sentence = Sentence()
+        return tree_bank
+
+    def to_file(self, path: str):
+        with open(path, "w", encoding="utf-8") as f_out:
+            for sentence in self.sentences:
+                for token in sentence.tokens:
+                    f_out.write(str(token) + "\n")
+                f_out.write("\n")
+
     @property
     def tokens(self) -> List[Token]:
         return [token for sentence in self.sentences for token in sentence.tokens]
-
-    def __init__(self, sentences: List[Sentence] = None):
-        self.sentences = sentences if sentences else []
 
     def add_sentence(self, sentence: Sentence):
         self.sentences.append(sentence)
