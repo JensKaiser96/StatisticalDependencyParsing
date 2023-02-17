@@ -8,7 +8,7 @@ class Measure(ABC):
         num_correct = 0
         num_tokens = 0
         for gold_token, test_token in zip(gold_data.tokens, test_data.tokens):
-            if gold_token.id != test_token.id or gold_token.form != test_token.form:
+            if gold_token.id_ != test_token.id_ or gold_token.form != test_token.form:
                 raise TypeError("TreeBanks do not have a matching sequence of tokens/ids")
             if self.required_equality(gold_token, test_token):
                 num_correct += 1

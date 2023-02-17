@@ -6,6 +6,8 @@ import networkx as nx
 import numpy as np
 from matplotlib.patches import ConnectionStyle
 
+from src.tools.CONLL06 import Sentence
+
 ROOT = 0
 
 
@@ -44,7 +46,6 @@ class WeightedDirectedGraph:
     def __init__(self):
         self.data = np.zeros((1, 1))
         self.link = {0: None}
-        pass
 
     def __getitem__(self, index) -> Any:
         return self.link[index]
@@ -68,6 +69,14 @@ class WeightedDirectedGraph:
         copy.data = self.data.copy()
         copy.link = self.link.copy()
         return copy
+
+    @staticmethod
+    def from_sentence(sentence: Sentence):
+        tree = WeightedDirectedGraph()
+        for token in sentence:
+            if token.head > 0:
+                tree.add_edge(token.id_, token.head)
+        return tree
 
     def to_nx(self) -> nx.DiGraph:
         raise DeprecationWarning("networkx is useless with Weighted Directed Graphs.")

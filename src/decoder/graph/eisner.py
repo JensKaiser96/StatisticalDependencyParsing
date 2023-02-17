@@ -1,9 +1,7 @@
 import numpy as np
-from typing import List
 
 from src.DataStructures.graph import WeightedDirectedGraph as WDG
 from src.DataStructures.buffer import Buffer
-
 
 OpenRight = 0
 OpenLeft = 1
@@ -11,13 +9,12 @@ ClosedRight = 2
 ClosedLeft = 3
 
 
-def eisner(sentence: List[str], sigma: np.ndarray):
-    paths = calculate_max_tree(sentence, sigma)
-    return create_tree(len(sentence), paths)
+def eisner(n: int, sigma: np.ndarray) -> WDG:
+    paths = calculate_max_tree(n, sigma)
+    return create_tree(n, paths)
 
 
-def calculate_max_tree(sentence: List[str], sigma: np.ndarray):
-    n = len(sentence)
+def calculate_max_tree(n: int, sigma: np.ndarray) -> np.ndarray:
     scores = np.zeros((4, n, n))
     paths = np.zeros((4, n, n))
 
@@ -48,7 +45,7 @@ def calculate_max_tree(sentence: List[str], sigma: np.ndarray):
     return paths
 
 
-def create_tree(n, paths):
+def create_tree(n, paths) -> WDG:
     tree = WDG()
     buffer = Buffer([(ClosedLeft, 0, n, paths[ClosedLeft, 0, n])])
 

@@ -2,28 +2,28 @@ from typing import List, Iterable
 
 
 class Buffer:
-    buffer: List
+    data: List
 
     def __init__(self, buffer: Iterable = None):
         if buffer:
-            self.buffer = list(buffer)
+            self.data = list(buffer)
         else:
-            self.buffer = []
+            self.data = []
 
     def __bool__(self):
-        return bool(self.buffer)
+        return bool(self.data)
 
     @property
     def top(self):
-        return self.buffer[0]
+        return self.data[0]
 
     def pop(self):
         result = self.top
-        self.buffer = self.buffer[1:]
+        self.data = self.data[1:]
         return result
 
     def add(self, item):
-        self.buffer.append(item)
+        self.data.append(item)
         return self
 
     def add_list(self, list_: Iterable):
@@ -32,4 +32,4 @@ class Buffer:
         return self
 
     def __iter__(self):
-        return self.buffer
+        return self.data
