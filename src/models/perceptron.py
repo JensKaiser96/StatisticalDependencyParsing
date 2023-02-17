@@ -49,11 +49,10 @@ class Perceptron:
 
     def _create_feature_vector(self, sentence: Sentence) -> np.ndarray:
         n = len(sentence)
-        features = np.ones((n, n, len(template.TemplateCollection), 4), dtype=int) * -1
+        features = np.ones((n, n, len(template.TemplateCollection), 5), dtype=int) * -1
         pairs = permutations(range(n), 2)
         for head_index, dependent_index in pairs:
             a = self.templer.extract_features(sentence[head_index], sentence[dependent_index], sentence)
-            print(a)
             features[head_index, dependent_index] = a
         return features
 

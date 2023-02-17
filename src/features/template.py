@@ -103,7 +103,7 @@ class Templer:
         features = []
         for template, template_index in self.template_dict.items():
             try:
-                key = np.array([template_index, -1, -1, -1])
+                key = np.array([template_index, -1, -1, -1, -1])
                 for feature_position, feature in enumerate(template):
                     feature = feature.name
                     current_token = Templer._get_relevant_token(feature, head, dependent, sentence)
@@ -112,7 +112,7 @@ class Templer:
                     else:  # FORM
                         key[feature_position + 1] = self.tree_bank.form_dict[current_token.form]
                 features.append(key)
-            except IndexError:
+            except KeyError:
                 if current_token.pos not in self.tree_bank.pos_dict:
                     print(f"'{current_token.pos}' is out of POS vocabulary.")
                 if current_token.form not in self.tree_bank.form_dict:
