@@ -13,7 +13,7 @@ from enum import Enum, auto
 from itertools import combinations, permutations
 
 import numpy as np
-from tqdm import tqdm
+# from tqdm import tqdm
 
 from src.tools.CONLL06 import Token, Sentence, TreeBank
 from src.DataStructures.graph import WeightedDirectedGraph as WDG
@@ -53,10 +53,14 @@ class ExtendedTemplates(Enum):
     def templates() -> list[tuple]:
         return [
             (BasicTemplates.HEAD_POS, ExtendedTemplates.BETW_POS, BasicTemplates.DEPE_POS),
-            (BasicTemplates.HEAD_POS, BasicTemplates.DEPE_POS, ExtendedTemplates.HEAD_POS_NEXT, ExtendedTemplates.DEPE_POS_NEXT),
-            (BasicTemplates.HEAD_POS, BasicTemplates.DEPE_POS, ExtendedTemplates.HEAD_POS_PREV, ExtendedTemplates.DEPE_POS_NEXT),
-            (BasicTemplates.HEAD_POS, BasicTemplates.DEPE_POS, ExtendedTemplates.HEAD_POS_NEXT, ExtendedTemplates.DEPE_POS_PREV),
-            (BasicTemplates.HEAD_POS, BasicTemplates.DEPE_POS, ExtendedTemplates.HEAD_POS_PREV, ExtendedTemplates.DEPE_POS_PREV)
+            (BasicTemplates.HEAD_POS, BasicTemplates.DEPE_POS, ExtendedTemplates.HEAD_POS_NEXT,
+             ExtendedTemplates.DEPE_POS_NEXT),
+            (BasicTemplates.HEAD_POS, BasicTemplates.DEPE_POS, ExtendedTemplates.HEAD_POS_PREV,
+             ExtendedTemplates.DEPE_POS_NEXT),
+            (BasicTemplates.HEAD_POS, BasicTemplates.DEPE_POS, ExtendedTemplates.HEAD_POS_NEXT,
+             ExtendedTemplates.DEPE_POS_PREV),
+            (BasicTemplates.HEAD_POS, BasicTemplates.DEPE_POS, ExtendedTemplates.HEAD_POS_PREV,
+             ExtendedTemplates.DEPE_POS_PREV)
         ]
 
 
@@ -68,9 +72,10 @@ class Templer:
     tree_bank: TreeBank
     template_dict = {t: i for i, t in enumerate(TemplateCollection)}
 
-    def __init__(self, tree_bank: TreeBank, path: str = ""):
+    def __init__(self, tree_bank: TreeBank, path: str = "", logging=False):
         self.tree_bank = tree_bank
         self.features = np.array([])
+        self.logging = logging
         if not path:
             return
         if os.path.isfile(path):
@@ -82,13 +87,16 @@ class Templer:
             self.to_file(path)
 
     def feature_dict(self) -> dict:
-        return {key: i for i, key in enumerate(self.features)}
+        return {tuple(key): i for i, key in enumerate(self.features)}
 
     def create_feature_set(self):
-        for sentence in tqdm(self.tree_bank):
+        feature_list = []
+        for sentence in self.tree_bank:  # tqdm(self.tree_bank):
             for token in sentence:
                 for feature in self.extract_features(head=sentence[token.head], dependent=token, sentence=sentence):
-                    self.features = np.append(self.features, feature)
+                    feature_list.append(feature)
+        self.features = np.stack(feature_list)
+        print(f"feature set complete, {self.features.shape}")
 
     def to_file(self, path: str, overwrite=False):
         if not overwrite and os.path.isfile(path):
@@ -102,21 +110,22 @@ class Templer:
     def extract_features(self, head: Token, dependent: Token, sentence: Sentence) -> np.ndarray:
         features = []
         for template, template_index in self.template_dict.items():
-            try:
-                key = np.array([template_index, -1, -1, -1, -1])
-                for feature_position, feature in enumerate(template):
-                    feature = feature.name
-                    current_token = Templer._get_relevant_token(feature, head, dependent, sentence)
+            key = np.array([template_index, -1, -1, -1, -1])
+            for feature_position, feature in enumerate(template):
+                feature = feature.name
+                current_token = Templer._get_relevant_token(feature, head, dependent, sentence)
+                try:
                     if POS in feature:
                         key[feature_position + 1] = self.tree_bank.pos_dict[current_token.pos]
                     else:  # FORM
                         key[feature_position + 1] = self.tree_bank.form_dict[current_token.form]
-                features.append(key)
-            except KeyError:
-                if current_token.pos not in self.tree_bank.pos_dict:
-                    print(f"'{current_token.pos}' is out of POS vocabulary.")
-                if current_token.form not in self.tree_bank.form_dict:
-                    print(f"'{current_token.form}' is out of FORM vocabulary.")
+                except KeyError:
+                    key[feature_position + 1] = -1
+                    if current_token.pos not in self.tree_bank.pos_dict and self.logging:
+                        print(f"'{current_token.pos}' is out of POS vocabulary.")
+                    if current_token.form not in self.tree_bank.form_dict and self.logging:
+                        print(f"'{current_token.form}' is out of FORM vocabulary.")
+            features.append(key)
         return np.array(features)
 
     @staticmethod
@@ -161,13 +170,12 @@ class Templator:
         self.pos_dict_size = len(self.pos_dict)
         self.templates = BasicTemplates.templates() + ExtendedTemplates.templates()
 
-        #self.start_index = dict()
+        # self.start_index = dict()
         self.feature_vector_size = 0
-        #self.set_feature_start_index()
+        # self.set_feature_start_index()
 
         self.template_offset = dict()
         self.template_offsets()
-
 
     @staticmethod
     def read_dict(path: str) -> dict[str: int]:

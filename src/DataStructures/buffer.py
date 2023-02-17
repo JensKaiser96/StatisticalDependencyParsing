@@ -10,6 +10,9 @@ class Buffer:
         else:
             self.data = []
 
+    def __len__(self):
+        return len(self.data)
+
     def __bool__(self):
         return bool(self.data)
 

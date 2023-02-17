@@ -15,6 +15,7 @@ class Perceptron:
     def __init__(self, templer: Templer):
         print(f"Initializing Perceptron with size {len(templer.features)}")
         self.templer = templer
+        self.feature_dict = templer.feature_dict()
         self.weights = np.zeros((len(templer.features), ), dtype=int)
 
     def save_weights(self, path: str):
@@ -31,7 +32,7 @@ class Perceptron:
         for epoch in range(epochs):
             for sentence in tree_bank:
                 features = self._create_feature_vector(sentence)
-                predicted_tree = eisner(sentence, self.score_tree(features))
+                predicted_tree = eisner(len(sentence), self.score_tree(features))
                 gold_tree = WDG()
                 if gold_tree != predicted_tree:
                     gold_tree_indices = Templer.extract_feature_indices(gold_tree, features)
@@ -59,15 +60,19 @@ class Perceptron:
     def predict(self, sentence: Sentence) -> WDG:
         return eisner(len(sentence), self.score_tree(self._create_feature_vector(sentence)))
 
-    def score(self, psi: np.ndarray) -> float:
+    def score(self, features: np.ndarray) -> float:
         """
         input feature vector <psi> is not a one hot encoding, but a list of indices
         """
-        if (psi == np.ones(psi.shape) * -1).all():  # case head == dependant
+        indices = []
+        for feature in features:
+            try:
+                self.feature_dict[tuple(feature)]
+            except KeyError:
+                pass
+        if not indices:
             return 0
-        if psi.min() < 0:
-            raise ValueError("Negative indices in feature vector")
-        return self.weights[psi].sum()
+        return self.weights[indices].sum()
 
     def score_tree(self, feature_vectors) -> np.ndarray:
         scores = np.zeros((feature_vectors.shape[:2]))

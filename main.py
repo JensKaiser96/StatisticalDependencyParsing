@@ -19,14 +19,14 @@ def main():
     # print(tree)
 
     model = Perceptron(t)
-    features = model._create_feature_vector(
-        Sentence().add_token(
-            Token(1, form="I", pos="PRP")).add_token(
-            Token(2, form="love", pos="VB")).add_token(
-            Token(3, form="cats", pos="NNP")
-        )
-    )
-    print(features)
+    sentence = Sentence().add_token(
+        Token(1, form="I", pos="PRP")).add_token(
+        Token(2, form="love", pos="VB")).add_token(
+        Token(3, form="cats", pos="NNP"))
+
+    # features = model._create_feature_vector(sentence)
+    # print(features)
+    model.predict(sentence)
 
     model.train(tb, 5)
 

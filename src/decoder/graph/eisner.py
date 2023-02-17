@@ -16,7 +16,7 @@ def eisner(n: int, sigma: np.ndarray) -> WDG:
 
 def calculate_max_tree(n: int, sigma: np.ndarray) -> np.ndarray:
     scores = np.zeros((4, n, n))
-    paths = np.zeros((4, n, n))
+    paths = np.zeros((4, n, n), dtype=int)
 
     def update_cell(step_type: int):
         if score > scores[step_type, s, t]:
@@ -32,7 +32,7 @@ def calculate_max_tree(n: int, sigma: np.ndarray) -> np.ndarray:
                 update_cell(OpenRight)
 
             for q in range(s, t):
-                score = scores[ClosedLeft, s, q] + scores[ClosedRight] + sigma[s, t]
+                score = scores[ClosedLeft, s, q] + scores[ClosedRight, q+1, t] + sigma[s, t]
                 update_cell(OpenLeft)
 
             for q in range(s, t):
@@ -47,13 +47,13 @@ def calculate_max_tree(n: int, sigma: np.ndarray) -> np.ndarray:
 
 def create_tree(n, paths) -> WDG:
     tree = WDG()
-    buffer = Buffer([(ClosedLeft, 0, n, paths[ClosedLeft, 0, n])])
+    buffer = Buffer([(ClosedLeft, 0, n-1, paths[ClosedLeft, 0, n-1])])
 
     while buffer:
+        print(len(buffer))
         step, s, t, q = buffer.pop()
         if s == t:
             continue
-        q = step.q
         if step == OpenRight:
             tree.add_edge(t, s)
             buffer.add((ClosedLeft, s, q, paths[OpenRight, s, q]))
