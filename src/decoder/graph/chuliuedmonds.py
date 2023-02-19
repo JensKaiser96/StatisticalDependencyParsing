@@ -1,11 +1,4 @@
-from typing import List, Tuple
-from logging import Logger
-
-import numpy as np
-
 from src.DataStructures.graph import WeightedDirectedGraph as WDGraph
-
-LOGGER = Logger(__name__)
 
 
 def mst(graph: WDGraph) -> WDGraph:
@@ -83,6 +76,7 @@ def resolve(input_graph: WDGraph, cycle: list[int], out_mapping: dict[int, tuple
         input_graph.set_edge_weight(head, dependent, weight)
     return input_graph
 
+
 if __name__ == '__main__':
     for i in range(2, 30):
         wdg = WDGraph().random(i, seed=2)
@@ -94,7 +88,6 @@ if __name__ == '__main__':
                 print(f"Graph of size: {i} to tree worked. :D")
         except UnboundLocalError as e:
             print(e)
-            # is_tree = False
             tree = WDGraph()
         if not is_tree:
             print(f"before:\n{wdg}")
