@@ -45,10 +45,13 @@ class WeightedDirectedGraph:
         self.data[self.data > 0] = 1
         return self
 
-    def compare(self, other: "WeightedDirectedGraph") -> float:
+    def compare(self, other: "WeightedDirectedGraph", verbose=False) -> float:
         """
         returns percentage of matching edges, UAS-like
         """
+        if verbose and (self.number_of_nodes != other.number_of_nodes or self.number_of_edges != other.number_of_edges):
+            print(f"self:  {self.number_of_nodes} nodes, {self.number_of_edges} edges.\n"
+                  f"other: {other.number_of_nodes} nodes, {other.number_of_edges} edges.\n")
         correct = 0
         total = 0
         for node in self.node_ids:
@@ -239,6 +242,11 @@ class WeightedDirectedGraph:
 
     def has_head(self, node_id: int) -> bool:
         return bool(self._heads_slice(node_id).max())
+
+    def attach_loose_nodes(self):
+        for node in self.node_ids:
+            if self.has_head(node) and node != ROOT:
+                self.add_edge(ROOT, node)
 
     def get_head_ids(self, node_id: int) -> np.ndarray[int]:
         return np.nonzero(self._heads_slice(node_id))[0]
