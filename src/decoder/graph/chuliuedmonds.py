@@ -84,10 +84,13 @@ def resolve(input_graph: WDGraph, cycle: list[int], out_mapping: dict[int, tuple
 
 
 if __name__ == '__main__':
-    d = [[0., 6., 8., 9.], [1., 0., 3., 2.], [1., 9., 0., 6.], [1., 5., 3., 0.]]
-    wdg = WDGraph()
-    wdg.data = np.array(d)
-    mst(wdg)
+    g = WDGraph()
+    g.data = np.arange(16).reshape((4,4))
+    np.fill_diagonal(g.data, 0)
+    g.data[:,0] = 0
+    print(g.data)
+    print(mst(g))
+
     exit(0)
     for i in range(2, 105):
         wdg = WDGraph().random(i, seed=i)

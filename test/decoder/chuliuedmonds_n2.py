@@ -190,6 +190,7 @@ def mst(in_tree: WDG):
     scores = in_tree.data
     flat_tree = chuliu_edmonds_one_root(scores)
     n = len(flat_tree)
+    print(flat_tree)
     tree = np.zeros((n, n), dtype=float)
     for index, value in enumerate(flat_tree):
         tree[value, index] = 1
@@ -201,8 +202,13 @@ def mst(in_tree: WDG):
 # ***************************************************************
 def main(n=10):
     """"""
-    g = WDG().random(10, seed=1)
+    g = WDG()
+    g.data = np.arange(16).reshape((4,4))
+    np.fill_diagonal(g.data, 0)
+    g.data[:,0] = 0
+    print(g.data)
     g_ = mst(g)
+    print(g_)
     assert g_.is_well_formed_tree()
     return
     for i in range(100):

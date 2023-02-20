@@ -4,7 +4,7 @@ import numpy as np
 from tqdm import tqdm
 
 from src.decoder.graph.chuliuedmonds import mst
-from test.decoder.chuliuedmonds_n2 import mst
+# from test.decoder.chuliuedmonds_n2 import mst
 from src.features.template import TemplateWizard
 from src.tools.CONLL06 import TreeBank, Sentence
 from src.DataStructures.graph import WeightedDirectedGraph as WDG
@@ -34,7 +34,7 @@ class Perceptron:
             for sentence in tqdm(tree_bank):
                 predicted_tree = self.predict(sentence)
                 gold_tree = WDG.from_sentence(sentence)
-                # predicted_tree.draw()
+                #predicted_tree.draw()
                 uases.append(predicted_tree.compare(gold_tree))
                 if gold_tree != predicted_tree:
                     gold_tree_indices = self.get_feature_indices_from_tree(gold_tree, sentence)
