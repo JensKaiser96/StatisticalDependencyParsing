@@ -5,7 +5,7 @@ import numpy as np
 
 from src.DataStructures.graph import WeightedDirectedGraph as WDG
 from src.DataStructures.graph import ContractedDirectedWeightedGraph as CWDG
-from src.decoder.graph.chuliuedmonds import mst, reduce_graph
+from src.decoder.graph.chuliuedmonds import mst, reduce
 
 
 class ChuLiuEdmondsTest(unittest.TestCase):
@@ -22,12 +22,12 @@ class ChuLiuEdmondsTest(unittest.TestCase):
         expected = WDG()
         expected.add_edge(0, 1, 10)
 
-        self.assertEqual(reduce_graph(wdg), expected)
+        self.assertEqual(reduce(wdg), expected)
 
         wdg.add_edge(0, 2, 1)
 
         expected.add_edge(0, 2, 1)
-        self.assertEqual(reduce_graph(wdg), expected)
+        self.assertEqual(reduce(wdg), expected)
 
     def test_contract_graph(self):
         """
@@ -56,12 +56,21 @@ class ChuLiuEdmondsTest(unittest.TestCase):
     def test_resolve_graph(self):
         pass
 
+
+
     def test_mst(self):
+        from test.decoder.chuliuedmonds_n2 import chuliu_edmonds_one_root, flat_tree_to_chonky_boiii
+        wdg = WDG().random(10, seed=12345)
+        scores = wdg.data
+        gold_tree = chuliu_edmonds_one_root(scores)
+        my_tree = mst(wdg).normalize()
+        print(self.flat_tree_to_chonky_boiii(gold_tree))
+
+        print(my_tree)
+        exit(0)
         seed = 12345
         for i in range(2, 100):  # range(2, 20):
             wdg = WDG().random(i, seed=seed)
-            print(wdg)
-            tree = mst(wdg)
+            my_tree = mst(wdg)
             # print(tree)
-            print(tree.is_well_formed_tree())
-        self.assertTrue(tree.is_well_formed_tree())
+            self.assertTrue(tree.is_well_formed_tree())

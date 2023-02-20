@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 
 from src.decoder.graph.chuliuedmonds import mst
+from test.decoder.chuliuedmonds_n2 import mst
 from src.features.template import TemplateWizard
 from src.tools.CONLL06 import TreeBank, Sentence
 from src.DataStructures.graph import WeightedDirectedGraph as WDG
