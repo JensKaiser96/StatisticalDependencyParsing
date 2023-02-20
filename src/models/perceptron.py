@@ -59,7 +59,10 @@ class Perceptron:
 
     def _create_full_tree_from_sentence(self, sentence: Sentence) -> WDG:
         n = len(sentence)
-        tree = WDG().random(size=n)
+        # initialize with random values between 0 and 1, should not affect mst result due to low values
+        # having these values prevents too sparse trees
+        # tree = WDG.random(n)
+        tree = WDG(size=n)
         all_arcs = permutations(range(n), 2)
         missed_features = 0
         for head, dependent in all_arcs:
