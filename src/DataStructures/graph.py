@@ -69,16 +69,18 @@ class WeightedDirectedGraph:
                 tree.add_edge(token.id_, token.head)
         return tree
 
-    def random(self, size: int, make0root: bool = True, seed: int = None) -> "WeightedDirectedGraph":
+    @staticmethod
+    def random(size: int, make0root: bool = True, seed: int = None) -> "WeightedDirectedGraph":
+        graph = WeightedDirectedGraph()
         if seed is not None:
             np.random.seed(seed)
-        if (self.data != np.zeros((1, 1))).all():
+        if (graph.data != np.zeros((1, 1))).all():
             raise ValueError("Weights are already initialized, this method is for creating a random graph from scratch")
-        self.data = np.random.random((size, size))
-        np.fill_diagonal(self.data, 0)
+        graph.data = np.random.random((size, size))
+        np.fill_diagonal(graph.data, 0)
         if make0root:
-            self.make_0_root()
-        return self
+            graph.make_0_root()
+        return graph
 
     def draw(self):
         figure, axis = plt.subplots()

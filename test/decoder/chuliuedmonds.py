@@ -60,7 +60,7 @@ class ChuLiuEdmondsTest(unittest.TestCase):
 
     def test_mst(self):
         from test.decoder.chuliuedmonds_n2 import chuliu_edmonds_one_root, flat_tree_to_chonky_boiii
-        wdg = WDG().random(10, seed=12345)
+        wdg = WDG.random(10, seed=12345)
         scores = wdg.data
         gold_tree = chuliu_edmonds_one_root(scores)
         my_tree = mst(wdg).normalize()
@@ -70,7 +70,7 @@ class ChuLiuEdmondsTest(unittest.TestCase):
         exit(0)
         seed = 12345
         for i in range(2, 100):  # range(2, 20):
-            wdg = WDG().random(i, seed=seed)
+            wdg = WDG.random(i, seed=seed)
             my_tree = mst(wdg)
             # print(tree)
             self.assertTrue(tree.is_well_formed_tree())

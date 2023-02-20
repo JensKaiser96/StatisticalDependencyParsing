@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
     exit(0)
     for i in range(2, 105):
-        wdg = WDGraph().random(i, seed=i)
+        wdg = WDGraph.random(i, seed=i)
         wdg.data *= 10
         #[wdg.data < 0.5] = 0
         is_tree = True
