@@ -65,8 +65,9 @@ class WeightedDirectedGraph:
     def from_sentence(sentence: Sentence):
         tree = WeightedDirectedGraph()
         for token in sentence:
-            if token.head > 0:
-                tree.add_edge(token.id_, token.head)
+            if token.id_ == ROOT:
+                continue
+            tree.add_edge(token.id_, token.head)
         return tree
 
     @staticmethod
