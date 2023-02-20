@@ -1,4 +1,3 @@
-import os
 from dataclasses import dataclass
 import random
 from typing import List
@@ -97,6 +96,9 @@ class Sentence:
     def __getitem__(self, index) -> Token:
         return self.tokens[index]
 
+    def __len__(self):
+        return len(self.tokens)
+
     def get_token_or_null_token(self, index):
         """
         returns Token at position <index>, if index is out of bounds, the special none token is returned
@@ -106,9 +108,6 @@ class Sentence:
         else:
             return self.tokens[index]
 
-    def __len__(self):
-        return len(self.tokens)
-
     def add_token(self, token: Token):
         self.tokens.append(token)
         return self
@@ -117,17 +116,9 @@ class Sentence:
 @dataclass
 class TreeBank:
     sentences: List[Sentence]
-    form_dict: dict[str, int]
-    pos_dict: dict[str, int]
-    form_set: set[str]
-    pos_set: set[str]
 
     def __init__(self, sentences: List[Sentence] = None):
         self.sentences = sentences if sentences else []
-        self.calculate_form_set()
-        self.calculate_pos_set()
-        self.calculate_form_dict()
-        self.calculate_pos_dict()
 
     def __getitem__(self, item):
         return self.sentences[item]
@@ -135,20 +126,8 @@ class TreeBank:
     def __len__(self):
         return len(self.sentences)
 
-    def calculate_form_dict(self, path=""):
-        if path:
-            self.load_form_dict(path)
-            self.calculate_form_set()
-        self.form_dict = {form: i for i, form in enumerate(self.form_set)}
-
-    def calculate_pos_dict(self, path=""):
-        if path:
-            self.load_pos_dict(path)
-            self.calculate_pos_set()
-        self.pos_dict = {pos: i for i, pos in enumerate(self.pos_set)}
-
     @staticmethod
-    def from_file(tree_bank_path: str, form_dict_path: str = "", pos_dict_path: str = ""):
+    def from_file(tree_bank_path: str):
         tree_bank = TreeBank()
         current_sentence = Sentence()
         with open(tree_bank_path, "r", encoding="utf-8") as f_in:
@@ -159,14 +138,6 @@ class TreeBank:
                 else:
                     tree_bank.add_sentence(current_sentence)
                     current_sentence = Sentence()
-        if form_dict_path:
-            tree_bank.load_form_dict(form_dict_path)
-        else:
-            tree_bank.calculate_form_dict()
-        if pos_dict_path:
-            tree_bank.load_pos_dict(pos_dict_path)
-        else:
-            tree_bank.calculate_pos_dict()
         return tree_bank
 
     def to_file(self, path: str):
@@ -175,40 +146,6 @@ class TreeBank:
                 for token in sentence.tokens:
                     f_out.write(str(token) + "\n")
                 f_out.write("\n")
-
-    def save_form_dict(self, path: str, overwrite=False):
-        self.set_to_file(self.form_set, path, overwrite)
-
-    def save_pos_dict(self, path: str, overwrite=False):
-        self.set_to_file(self.pos_set, path, overwrite)
-
-    def load_form_dict(self, path: str):
-        with open(path, mode='r', encoding="utf-8") as f_in:
-            self.form_set = {form.strip() for form in f_in.readlines()}
-        self.calculate_form_dict()
-
-    def load_pos_dict(self, path: str):
-        with open(path, mode='r', encoding="utf-8") as f_in:
-            self.pos_set = {pos.strip() for pos in f_in.readlines()}
-        self.calculate_pos_dict()
-
-    @staticmethod
-    def set_to_file(d: set, path: str, overwrite=False):
-        if not overwrite and os.path.isfile(path):
-            print(f"File '{path}' already exists, skipping dict creation")
-            return
-        with open(path, mode='w', encoding="utf-8") as f_out:
-            f_out.write("\n".join(d))
-
-    @property
-    def tokens(self) -> List[Token]:
-        return [token for sentence in self.sentences for token in sentence.tokens]
-
-    def calculate_pos_set(self):
-        self.pos_set = set([token.pos for token in self.tokens]).union(SPECIAL_VALUES)
-
-    def calculate_form_set(self):
-        self.form_set = set([token.form for token in self.tokens]).union(SPECIAL_VALUES)
 
     def add_sentence(self, sentence: Sentence):
         self.sentences.append(sentence)

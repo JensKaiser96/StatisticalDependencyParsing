@@ -1,36 +1,12 @@
-import logging
 import math
-from typing import List, Dict, Any
+from typing import List
 import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
 from matplotlib.patches import ConnectionStyle
 
 from src.tools.CONLL06 import Sentence
 
 ROOT = 0
-
-
-class Cycle:
-    members: List[int]
-    edge_incoming_from: int
-    edge_outgoing_to: int
-    edge_incoming_weight: float
-    edge_outgoing_weight: float
-
-    def __init__(self, members: List[int] = None):
-        if members is None:
-            self.members = []
-        self.members = members
-
-    def __bool__(self):
-        return bool(self.members)
-
-    def __getitem__(self, item):
-        return self.members[item]
-
-    def __len__(self):
-        return len(self.members)
 
 
 class WeightedDirectedGraph:
@@ -41,17 +17,13 @@ class WeightedDirectedGraph:
     values denote weight
     """
     data: np.ndarray
-    link: Dict[int, Any]
 
-    def __init__(self):
-        self.data = np.zeros((1, 1))
-        self.link = {0: None}
-
-    def __getitem__(self, index) -> Any:
-        return self.link[index]
+    def __init__(self, size: int = 1, allow_negative_edges=False):
+        self.allow_negative_edges = allow_negative_edges
+        self.data = np.zeros((size, size))
 
     def __str__(self):
-        return f"WeightedDirectedGraph with {self.number_of_nodes} nodes.\n{self.link}\n{self.data}"
+        return f"WeightedDirectedGraph with {self.number_of_nodes} nodes.\n{self.data}"
 
     def __eq__(self, other: "WeightedDirectedGraph"):
         size_diff = len(self) - len(other)
@@ -67,8 +39,27 @@ class WeightedDirectedGraph:
     def copy(self) -> "WeightedDirectedGraph":
         copy = WeightedDirectedGraph()
         copy.data = self.data.copy()
-        copy.link = self.link.copy()
         return copy
+
+    def normalize(self):
+        self.data[self.data > 0] = 1
+        return self
+
+    def compare(self, other: "WeightedDirectedGraph") -> float:
+        """
+        returns percentage of matching edges, UAS-like
+        """
+        correct = 0
+        total = 0
+        for node in self.node_ids:
+            for dependants in self.get_dependent_ids(node):
+                try:
+                    if other.get_edge_weight(node, dependants) > 0:
+                        correct += 1
+                except IndexError:
+                    pass
+                total += 1
+        return correct/max(total, 1)
 
     @staticmethod
     def from_sentence(sentence: Sentence):
@@ -78,21 +69,12 @@ class WeightedDirectedGraph:
                 tree.add_edge(token.id_, token.head)
         return tree
 
-    def to_nx(self) -> nx.DiGraph:
-        raise DeprecationWarning("networkx is useless with Weighted Directed Graphs.")
-        nx_graph = nx.DiGraph()
-        for node_id in self.node_ids:
-            for dependent in self.get_dependent_ids(node_id):
-                nx_graph.add_edge(node_id, dependent, weight=self.get_edge_weight(node_id, dependent))
-        return nx_graph
-
     def random(self, size: int, make0root: bool = True, seed: int = None) -> "WeightedDirectedGraph":
         if seed is not None:
             np.random.seed(seed)
         if (self.data != np.zeros((1, 1))).all():
             raise ValueError("Weights are already initialized, this method is for creating a random graph from scratch")
         self.data = np.random.random((size, size))
-        self.link = {i: None for i in range(size)}
         np.fill_diagonal(self.data, 0)
         if make0root:
             self.make_0_root()
@@ -160,14 +142,22 @@ class WeightedDirectedGraph:
         self.data = np.append(self.data, np.zeros((size_diff, size_old)), axis=0)
         self.data = np.append(self.data, np.zeros((size_new, size_diff)), axis=1)
 
-    def add_edge(self, start_id: int, end_id: int, weight: float = 1):
-        if not weight:
+    def add_edge(self, start_id: int, end_id: int, weight: float = 1, check_for_duplicate=False, allow_zero=True):
+        if not weight and not allow_zero:
             raise ValueError("input argument 'weight' must be something else than 0.")
+        if weight < 0 and not self.allow_negative_edges:
+            weight = 0
         # make data matrix larger if necessary
         largest_index = max(start_id, end_id)
         if largest_index >= self.number_of_nodes:
             self._expand_data_table(largest_index + 1)
+        if self.data[start_id, end_id] and check_for_duplicate:
+            raise ValueError(f"Edge ({start_id},{end_id}) already exitst")
         self.data[start_id, end_id] = weight
+        return self
+
+    def set_edge_weight(self, start_id: int, end_id: int, weight: float):
+        self.add_edge(start_id, end_id, weight, check_for_duplicate=False)
         return self
 
     def remove_edge(self, start_id: int, end_id: int):
@@ -191,8 +181,8 @@ class WeightedDirectedGraph:
         self.data[max_head_id, node_id] = max_head_value  # restore value at index
         return self
 
-    def get_edge_weight(self, start_id: int, end_id: int) -> float:
-        if not self.data[start_id, end_id]:
+    def get_edge_weight(self, start_id: int, end_id: int, strict=False) -> float:
+        if not self.data[start_id, end_id] and strict:
             raise ValueError(f"No edge from '{start_id}' to '{end_id}' in graph.")
         return self.data[start_id, end_id]
 
@@ -205,7 +195,7 @@ class WeightedDirectedGraph:
         else:
             return self._heads_slice(node_id).argmax()
 
-    def add_node(self, linked_object=None, index=0):
+    def add_node(self, index=0):
         """
         add a node, without a specified index it will be appended at the end
         """
@@ -214,15 +204,14 @@ class WeightedDirectedGraph:
         else:
             index = self.number_of_nodes + 1
         self._expand_data_table(index)
-        self.link[index] = linked_object
         return self
 
     def delete_node(self, node_id):
         """
         actually deletes a node, aka node indexes change
         """
-        self.data = np.delete(self.data, node_id, node_id)
-        del(self.link[node_id])
+        self.data = np.delete(self.data, node_id, axis=0)
+        self.data = np.delete(self.data, node_id, axis=1)
         return self
 
     def cut_node(self, node_id: int):
@@ -297,6 +286,7 @@ class WeightedDirectedGraph:
             weight += self.get_edge_weight(current_node, next_node)
         return weight
 
+    # todo test
     def weight_to_cycle(self, cycle: List[int], start_id: int, end_id: int) -> float:
         return self.get_edge_weight(start_id, end_id) + self.cycle_weight_minus_node(cycle, end_id)
 

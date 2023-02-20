@@ -9,11 +9,10 @@ dpos                hform, dform
                     hpos, dpos
 """
 import os
-from enum import Enum, auto
-from itertools import combinations, permutations
+from itertools import combinations
 
 import numpy as np
-# from tqdm import tqdm
+from tqdm import tqdm
 
 from src.tools.CONLL06 import Token, Sentence, TreeBank
 from src.DataStructures.graph import WeightedDirectedGraph as WDG
@@ -23,58 +22,133 @@ DEPE = "DEPE"
 FORM = "FORM"
 POS = "POS"
 
+HEAD_FORM = f"{HEAD}_{FORM}"
+HEAD_POS = f"{HEAD}_{POS}"
+DEPE_FORM = f"{DEPE}_{FORM}"
+DEPE_POS = f"{DEPE}_{POS}"
+BASIC_FEATURES = (HEAD_FORM, HEAD_POS, DEPE_FORM, DEPE_POS)
 
-class BasicTemplates(Enum):
-    HEAD_FORM = auto()
-    DEPE_FORM = auto()
-    HEAD_POS = auto()
-    DEPE_POS = auto()
+BETW = "BETW"
+NEXT = "NEXT"
+PREV = "PREV"
 
+BETW_POS = f"{BETW}_{POS}"
+HEAD_POS_NEXT = f"{HEAD}_{POS}_{NEXT}"
+HEAD_POS_PREV = f"{HEAD}_{POS}_{PREV}"
+DEPE_POS_NEXT = f"{DEPE}_{POS}_{NEXT}"
+DEPE_POS_PREV = f"{DEPE}_{POS}_{PREV}"
+
+
+class TemplateWizard:
     @staticmethod
-    def templates() -> list[tuple["BasicTemplates"]]:
+    def basic_templates():
         """
         generates all combinations with length 1 to 4 of features
         """
         grams = []
         for n in range(1, 5):
-            for combination in combinations(BasicTemplates, n):
+            for combination in combinations(BASIC_FEATURES, n):
                 grams.append(combination)
-        return grams
-
-
-class ExtendedTemplates(Enum):
-    BETW_POS = auto()
-    HEAD_POS_PREV = auto()
-    HEAD_POS_NEXT = auto()
-    DEPE_POS_PREV = auto()
-    DEPE_POS_NEXT = auto()
+        return tuple(grams)
 
     @staticmethod
-    def templates() -> list[tuple]:
-        return [
-            (BasicTemplates.HEAD_POS, ExtendedTemplates.BETW_POS, BasicTemplates.DEPE_POS),
-            (BasicTemplates.HEAD_POS, BasicTemplates.DEPE_POS, ExtendedTemplates.HEAD_POS_NEXT,
-             ExtendedTemplates.DEPE_POS_NEXT),
-            (BasicTemplates.HEAD_POS, BasicTemplates.DEPE_POS, ExtendedTemplates.HEAD_POS_PREV,
-             ExtendedTemplates.DEPE_POS_NEXT),
-            (BasicTemplates.HEAD_POS, BasicTemplates.DEPE_POS, ExtendedTemplates.HEAD_POS_NEXT,
-             ExtendedTemplates.DEPE_POS_PREV),
-            (BasicTemplates.HEAD_POS, BasicTemplates.DEPE_POS, ExtendedTemplates.HEAD_POS_PREV,
-             ExtendedTemplates.DEPE_POS_PREV)
+    def extended_templates():
+        return (
+            (HEAD_POS, BETW_POS, DEPE_POS),
+            (HEAD_POS, DEPE_POS, HEAD_POS_NEXT, DEPE_POS_NEXT),
+            (HEAD_POS, DEPE_POS, HEAD_POS_PREV, DEPE_POS_NEXT),
+            (HEAD_POS, DEPE_POS, HEAD_POS_NEXT, DEPE_POS_PREV),
+            (HEAD_POS, DEPE_POS, HEAD_POS_PREV, DEPE_POS_PREV)
+        )
+
+    TEMPLATES = basic_templates() + extended_templates()
+
+    @staticmethod
+    def get_feature_keys(head: Token | int, dependant: Token | int, sentence: Sentence) -> list[str]:
+        """
+        returns feature keys for an edge.
+        Example:
+        ["HEAD_FORM_<I>,", "HEAD_POS_<PP>,", ...
+        "DEPE_FORM_<cats>,DEPE_POS_<NN>,", ...
         ]
+        """
+        if isinstance(head, int):
+            head = sentence[head]
+        if isinstance(dependant, int):
+            dependant = sentence[dependant]
+        keys = []
+        for template in TemplateWizard.TEMPLATES:
+            key = ""
+            for feature in template:
+                token = TemplateWizard._get_relevant_token(feature, head, dependant, sentence)
+                if FORM in feature:
+                    key += f"{feature}_<{token.form}>,"
+                else:
+                    key += f"{feature}_<{token.pos}>,"
+            keys.append(key)
+        return keys
 
+    @staticmethod
+    def _get_relevant_token(feature, head: Token, dependent: Token, sentence: Sentence) -> Token:
+        if DEPE in feature:
+            relevant_token = dependent
+        elif HEAD in feature:
+            relevant_token = head
+        else:  # BETW
+            betw_id = (head.id_ + dependent.id_) / 2
+            if abs(head.id_ - betw_id) == 1:
+                relevant_token = sentence[int(betw_id)]
+            else:
+                relevant_token = Token.create_none()
+        if NEXT in feature:
+            relevant_token = sentence.get_token_or_null_token(relevant_token.id_ + 1)
+        if PREV in feature:
+            relevant_token = sentence.get_token_or_null_token(relevant_token.id_ - 1)
+        return relevant_token
 
-TemplateCollection = BasicTemplates.templates() + ExtendedTemplates.templates()
+    @staticmethod
+    def create_feature_dict(tree_bank: TreeBank, path: str) -> dict[str, int]:
+        if os.path.isfile(path):
+            print(f"Found dict at given path, loading from file...")
+            return TemplateWizard.load_dict(path)
+        print(f"Creating new feature dict from tree bank, this might take a while...")
+        feature_dict = {}
+        index = 0
+        for sentence in tqdm(tree_bank):
+            for token in sentence:
+                feature_keys = TemplateWizard.get_feature_keys(token.head, token, sentence)
+                for feature_key in feature_keys:
+                    if feature_key not in feature_dict:
+                        feature_dict[feature_key] = index
+                        index += 1
+        TemplateWizard.save_dict(feature_dict, path)
+        return feature_dict
 
+    @staticmethod
+    def save_dict(feature_dict: dict, path: str):
+        with open(path, 'w', encoding="utf-8") as f_out:
+            for key, value in feature_dict.items():
+                f_out.write(f"{key}\t{value}\n")
+
+    @staticmethod
+    def load_dict(path: str) -> dict[str, int]:
+        feature_dict = {}
+        with open(path, 'r', encoding="utf-8") as f_in:
+            for line in f_in.readlines():
+                key, value = line.strip().split("\t")
+                feature_dict[key] = int(value)
+        return feature_dict
 
 class Templer:
     features: np.ndarray
     tree_bank: TreeBank
-    template_dict = {t: i for i, t in enumerate(TemplateCollection)}
+    feature_dict: dict[tuple[int], int]
+    template_dict = {}
 
     def __init__(self, tree_bank: TreeBank, path: str = "", logging=False):
+        raise DeprecationWarning("FUCK THIS SHIT...")
         self.tree_bank = tree_bank
-        self.features = np.array([])
+        self.features = np.array([], dtype=int)
         self.logging = logging
         if not path:
             return
@@ -85,9 +159,10 @@ class Templer:
             print("Creating new feature set ...")
             self.create_feature_set()
             self.to_file(path)
+        self.compute_feature_dict()
 
-    def feature_dict(self) -> dict:
-        return {tuple(key): i for i, key in enumerate(self.features)}
+    def compute_feature_dict(self):
+        self.feature_dict = {tuple(key): i for i, key in enumerate(self.features)}
 
     def create_feature_set(self):
         feature_list = []
@@ -107,7 +182,7 @@ class Templer:
     def _load_features(self, path: str):
         self.features = np.load(path, allow_pickle=True)
 
-    def extract_features(self, head: Token, dependent: Token, sentence: Sentence) -> np.ndarray:
+    def extract_features(self, head: Token, dependent: Token, sentence: Sentence) -> np.ndarray:  # todo list[tuple]
         features = []
         for template, template_index in self.template_dict.items():
             key = np.array([template_index, -1, -1, -1, -1])
@@ -126,7 +201,7 @@ class Templer:
                     if current_token.form not in self.tree_bank.form_dict and self.logging:
                         print(f"'{current_token.form}' is out of FORM vocabulary.")
             features.append(key)
-        return np.array(features)
+        return np.array(features, dtype=int)
 
     @staticmethod
     def _get_relevant_token(feature, head: Token, dependent: Token, sentence: Sentence) -> Token:
@@ -147,132 +222,28 @@ class Templer:
             relevant_token = sentence.get_token_or_null_token(relevant_token.id_ - 1)
         return relevant_token
 
-    @staticmethod
-    def extract_feature_indices(tree: WDG, features: np.ndarray) -> np.ndarray:
+    def extract_feature_indices(self, tree: WDG, features: np.ndarray) -> np.ndarray:
         """
         extracts all the feature indices actually used in the tree, the feature array contains feature
         indices for every possible arc, but the tree only uses a subset of those. Method is used to train
         perceptron
         """
-        indices = np.array([])
+        # todo, confirm that this acctually works, it seem like the root arc is missing
+        indices = []
         arcs = np.where(tree.data > 0)
         for arc_pair in zip(arcs[0], arcs[1]):
-            np.append(indices, features[arc_pair])
-        return indices
-
-
-class Templator:
-    def __init__(self, form_dict_path: str, pos_dict_path: str):
-        raise DeprecationWarning("Not working...")
-        self.form_dict = self.read_dict(form_dict_path)
-        self.pos_dict = self.read_dict(pos_dict_path)
-        self.form_dict_size = len(self.form_dict)
-        self.pos_dict_size = len(self.pos_dict)
-        self.templates = BasicTemplates.templates() + ExtendedTemplates.templates()
-
-        # self.start_index = dict()
-        self.feature_vector_size = 0
-        # self.set_feature_start_index()
-
-        self.template_offset = dict()
-        self.template_offsets()
+            for feature in features[arc_pair]:
+                try:
+                    indices.append(self.feature_dict[tuple(feature)])
+                except KeyError:
+                    pass
+        return np.array(indices, dtype=int)
 
     @staticmethod
-    def read_dict(path: str) -> dict[str: int]:
-        with open(path, mode='r', encoding="utf-8") as f_in:
-            return {w.strip(): i for i, w in enumerate(f_in.readlines())}
-
-    def set_feature_start_index(self):
-        offset = 0
-        for template in self.templates:
-            for feature in template:
-                self.start_index[(template, feature)] = offset
-                feature_size = self.form_dict_size if "FORM" in feature.name else self.pos_dict_size
-                offset += feature_size
-        self.feature_vector_size = offset
-
-    def form_index(self, token_form: str) -> int:
-        try:
-            return self.form_dict[token_form]
-        except KeyError:
-            return self.form_dict["_NONE_"]
-
-    def pos_index(self, token_pos: str) -> int:
-        try:
-            return self.pos_dict[token_pos]
-        except KeyError:
-            return self.pos_dict["_NONE_"]
-
-    def template_size(self, template: tuple[BasicTemplates]) -> int:
-        size = 1
-        for feature in template:
-            if "FORM" in feature.name:
-                size *= self.form_dict_size
-            elif "POS" in feature.name:
-                size *= self.pos_dict_size
-            else:
-                raise ValueError(f"Feature '{feature}' does not contain 'FORM' or 'POS'")
-        return size
-
-    def template_offsets(self):
-        offset = 0
-        for template in self.templates:
-            self.template_offset[template] = offset
-            offset += self.template_size(template)
-        self.feature_vector_size = offset
-
-    def create_features(self, sentence) -> np.ndarray:
-        """
-        returns an np.ndarray of shape n x n x 18 (num templates) with indexes for 1s
-        -1 is for no index, (i,i),
-        """
-        n = len(sentence)
-        features = np.ones((n, n, len(self.templates)), dtype=int) * - 1
-        pairs = permutations(range(n), 2)
-        for head_index, dependent_index in pairs:
-            features[head_index, dependent_index] = self.create_feature_pair(sentence, head_index, dependent_index)
-        return features
-
-    def create_feature_pair(self, sentence: Sentence, head_index: int, dependant_index: int):
-        features = []
-        for template in self.templates:
-            feature_index = 0
-            for feature in template:
-                if "HEAD" in feature.name:
-                    token_index = head_index
-                elif "DEPE" in feature.name:
-                    token_index = dependant_index
-                else:  # BETW
-                    if head_index - dependant_index == 2:
-                        token_index = head_index - 1
-                    elif dependant_index - head_index == 2:
-                        token_index = dependant_index - 1
-                    else:  # head and dependent dont hug one token
-                        token_index = -1
-
-                if "NEXT" in feature.name:
-                    token_index += 1
-                elif "PREV" in feature.name:
-                    token_index -= 1
-
-                token = sentence[token_index]
-
-                if "FORM" in feature.name:  # todo fix bug, indices are too high
-                    feature_index += self.start_index[template, feature] + self.form_index(token.form)
-                else:  # POS
-                    feature_index += self.start_index[template, feature] + self.pos_index(token.pos)
-            features.append(feature_index + self.template_offset[template])
-        return features
-
-    @staticmethod
-    def extract_feature_indices(tree: WDG, features: np.ndarray) -> np.ndarray:
-        """
-        extracts all the feature indices actually used in the tree, the feature array contains feature
-        indices for every possible arc, but the tree only uses a subset of those. Method is used to train
-        perceptron
-        """
-        indices = np.array([])
+    def used_features(tree: WDG, features):
+        indices = []
         arcs = np.where(tree.data > 0)
-        for arc_pair in zip(arcs[0], arcs[1]):
-            np.append(indices, features[arc_pair])
-        return indices
+        for i,j in zip(arcs[0], arcs[1]):
+            for feature in features[i][j]:
+                indices.append(feature)
+        return np.array(indices, dtype=int)

@@ -1,3 +1,5 @@
+import numpy as np
+
 from src.DataStructures.graph import WeightedDirectedGraph as WDGraph
 
 
@@ -58,9 +60,13 @@ def resolve(input_graph: WDGraph, cycle: list[int], out_mapping: dict[int, tuple
     # recreate original head of cycle
     head = input_graph.get_head_ids(cycle_node_id)
     if len(head) != 1:
-        raise RuntimeError(f"cycle node has more than one head, heads:{head}")
-    head = head[0]
-    original_dependent, original_weight = in_mapping[head]
+        print(f"Something went wrong {head}, {in_mapping}")
+        head = 0
+        original_weight = 1
+        original_dependent = cycle[0]
+    else:
+        head = head[0]
+        original_dependent, original_weight = in_mapping[head]
     input_graph.set_edge_weight(head, original_dependent, original_weight)
 
     # delete cycle_node
@@ -78,8 +84,15 @@ def resolve(input_graph: WDGraph, cycle: list[int], out_mapping: dict[int, tuple
 
 
 if __name__ == '__main__':
-    for i in range(2, 30):
-        wdg = WDGraph().random(i, seed=2)
+    d = [[0., 6., 8., 9.], [1., 0., 3., 2.], [1., 9., 0., 6.], [1., 5., 3., 0.]]
+    wdg = WDGraph()
+    wdg.data = np.array(d)
+    mst(wdg)
+    exit(0)
+    for i in range(2, 105):
+        wdg = WDGraph().random(i, seed=i)
+        wdg.data *= 10
+        #[wdg.data < 0.5] = 0
         is_tree = True
         try:
             tree = mst(wdg)
