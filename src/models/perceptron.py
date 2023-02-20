@@ -13,9 +13,10 @@ from src.DataStructures.graph import WeightedDirectedGraph as WDG
 class Perceptron:
     weights: np.ndarray
 
-    def __init__(self, feature_dict: dict[str, int]):
+    def __init__(self, feature_dict: dict[str, int], logging=False):
         self.feature_dict = feature_dict
         self.weights = np.ones((len(feature_dict), ), dtype=int)
+        self.logging = logging
 
     def save_weights(self, path: str):
         np.save(path, self.weights, allow_pickle=True)
@@ -31,11 +32,15 @@ class Perceptron:
             num_correct = 0
             num_incorrect = 0
             uases = []
-            for sentence in tqdm(tree_bank):
+            if logging:
+                iterator = tqdm(tree_bank, desc=f"Epoch {epoch+1}/{epochs}")
+            else:
+                iterator = tree_bank
+            for sentence in iterator:
                 predicted_tree = self.predict(sentence)
                 gold_tree = WDG.from_sentence(sentence)
                 #predicted_tree.draw()
-                uases.append(predicted_tree.compare(gold_tree))
+                uases.append(predicted_tree.compare(gold_tree, verbose=False))
                 if gold_tree != predicted_tree:
                     gold_tree_indices = self.get_feature_indices_from_tree(gold_tree, sentence)
                     predicted_tree_indices = self.get_feature_indices_from_tree(predicted_tree, sentence)
@@ -66,28 +71,21 @@ class Perceptron:
                     arc_weight += self.weights[feature_index]
                 except KeyError:
                     missed_features += 1
-            if dependent != 0 and (head == 0 and arc_weight > 0):  # mst only works if this is given
-                tree.add_edge(head, dependent, arc_weight)
+            #print(f"adding edge ({head}) -> ({dependent}): {arc_weight}")
+            tree.add_edge(head, dependent, max(arc_weight, 1))
+        if self.logging:
+            print(f"Missed features during creation:\t{missed_features}")
+        tree.make_0_root()
+        tree.attach_loose_nodes()
         return tree
 
     def predict(self, sentence: Sentence) -> WDG:
-        full_predicted_tree = self._create_full_tree_from_sentence(sentence)
-        return mst(full_predicted_tree).normalize()
-
-    def score(self, features: np.ndarray=None, indices: list=None) -> float:
-        """
-        input feature vector <psi> is not a one hot encoding, but a list of indices
-        """
-        if indices is None:
-            indices = []
-            for feature in features:
-                try:
-                    indices.append(self.templer.feature_dict[tuple(feature)])
-                except KeyError:
-                    pass
-        if not indices:
-            return 0
-        return max(self.weights[indices].sum(), 0)
+        full_tree = self._create_full_tree_from_sentence(sentence)
+        pruned_tree = mst(full_tree).normalize()
+        if pruned_tree.number_of_nodes != pruned_tree.number_of_edges + 1:
+            print("Tree is missing edges.")
+            pass
+        return pruned_tree
 
     def get_feature_indices_from_tree(self, tree: WDG, sentence: Sentence) -> list[int]:
         """
@@ -106,5 +104,6 @@ class Perceptron:
                         feature_indices.append(self.feature_dict[feature_key])
                     except KeyError:
                         missed_features += 1
-        #print(f"Missed {missed_features} features during extraction from tree")
+        if self.logging:
+            print(f"Missed features during extraction:\t{missed_features}")
         return feature_indices
