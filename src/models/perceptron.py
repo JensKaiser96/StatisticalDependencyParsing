@@ -84,23 +84,29 @@ class Perceptron:
             print(f"Tree is not well formed")
         return pruned_tree
 
-    def get_feature_indices_from_tree(self, tree: WDG, sentence: Sentence) -> list[int]:
+    def annotate(self, tree_bank: TreeBank):
+        print("Annotating Tree Bank")
+        for sentence in tqdm(tree_bank):
+            tree = self.predict(sentence)
+            sentence.set_heads(tree)
+
+    def get_feature_indices_from_tree(self, tree: WDG, sentence: Sentence, strict=False) -> list[int]:
         """
         returns a list of all feature indices which occur in a given tree and sentence.
         Method is used during training, to get the indices for the weights which will be updated.
         in a way a reverse _create_full_tree_from_sentence
+
+        In strict mode, an error is thrown if feature is not found. Can be enabled when extracting
+        feature indices from gold trees.
         """
         feature_indices = []
-        missed_features = 0
         for token in sentence:
             for dependant_id in tree.get_dependent_ids(token.id_):
-                dependant = sentence[dependant_id]
-                feature_keys = TemplateWizard.get_feature_keys(token, dependant, sentence)
+                feature_keys = TemplateWizard.get_feature_keys(token, dependant_id, sentence)
                 for feature_key in feature_keys:
                     try:
                         feature_indices.append(self.feature_dict[feature_key])
                     except KeyError:
-                        missed_features += 1
-        if self.logging:
-            print(f"Missed features during extraction:\t{missed_features}")
+                        if strict:
+                            raise ValueError(f"Could not find index for feature {feature_key}. (and you wanted me to bitch about it (: )")
         return feature_indices
