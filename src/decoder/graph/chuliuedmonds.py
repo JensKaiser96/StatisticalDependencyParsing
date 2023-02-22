@@ -35,7 +35,7 @@ def contract(input_graph: WDGraph, cycle: list[int]) -> tuple[WDGraph, dict[int,
             if head in cycle and dependent in cycle:  # do nothing
                 pass
             if head not in cycle and dependent not in cycle:  # just add edge
-                contracted_graph.add_edge(head, dependent)
+                contracted_graph.add_edge(head, dependent, input_graph.get_edge_weight(head, dependent))
             if head in cycle and dependent not in cycle:  # only add largest edge to each outside node
                 out_weight = input_graph.get_edge_weight(head, dependent)
                 if out_weight > contracted_graph.get_edge_weight(cycle_node_id, dependent):
@@ -81,31 +81,3 @@ def resolve(input_graph: WDGraph, cycle: list[int], out_mapping: dict[int, tuple
         weight = max_tree.get_edge_weight(head, dependent)
         input_graph.set_edge_weight(head, dependent, weight)
     return input_graph
-
-
-if __name__ == '__main__':
-    g = WDGraph()
-    g.data = np.arange(16).reshape((4,4))
-    np.fill_diagonal(g.data, 0)
-    g.data[:,0] = 0
-    print(g.data)
-    print(mst(g))
-
-    exit(0)
-    for i in range(2, 105):
-        wdg = WDGraph.random(i, seed=i)
-        wdg.data *= 10
-        #[wdg.data < 0.5] = 0
-        is_tree = True
-        try:
-            tree = mst(wdg)
-            is_tree = tree.is_well_formed_tree()
-            if is_tree:
-                print(f"Graph of size: {i} to tree worked. :D")
-        except UnboundLocalError as e:
-            print(e)
-            tree = WDGraph()
-        if not is_tree:
-            print(f"before:\n{wdg}")
-            print(f"after:\n{tree}")
-            tree.draw()
