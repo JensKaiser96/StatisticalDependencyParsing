@@ -75,7 +75,7 @@ class TemplateWizard:
             dependant = sentence.get_token_or_none_token(dependant)
         keys = []
         for template in TemplateWizard.TEMPLATES:
-            key = ""
+            key = f"|{head.id_ - dependant.id_}|_"
             for feature in template:
                 token = TemplateWizard._get_relevant_token(feature, head, dependant, sentence)
                 if FORM in feature:
