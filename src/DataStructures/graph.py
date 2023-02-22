@@ -5,8 +5,6 @@ import numpy as np
 import networkx as nx
 from matplotlib.patches import ConnectionStyle
 
-from src.tools.CONLL06 import Sentence
-
 ROOT = 0
 
 
@@ -87,14 +85,11 @@ class WeightedDirectedGraph:
                 total += 1
         return correct/max(total, 1)
 
-    @staticmethod
-    def from_sentence(sentence: Sentence):
-        tree = WeightedDirectedGraph()
-        for token in sentence:
-            if token.id_ == ROOT:
-                continue
-            tree.add_edge(token.id_, token.head)
-        return tree
+    def count_common_edges(self, other: "WeightedDirectedGraph") -> int:
+        try:
+            return len(np.where(self.data * other.data > 0)[0])
+        except ValueError:
+            return 0
 
     @staticmethod
     def random(size: int, make0root: bool = True, seed: int = None) -> "WeightedDirectedGraph":
@@ -320,7 +315,6 @@ class WeightedDirectedGraph:
             weight += self.get_edge_weight(current_node, next_node)
         return weight
 
-    # todo test
     def weight_to_cycle(self, cycle: List[int], start_id: int, end_id: int) -> float:
         return self.get_edge_weight(start_id, end_id) + self.cycle_weight_minus_node(cycle, end_id)
 

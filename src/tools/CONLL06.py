@@ -2,6 +2,8 @@ from dataclasses import dataclass
 import random
 from typing import List
 
+from src.DataStructures.graph import WeightedDirectedGraph as WDG
+
 MISSING_VALUE_CHAR = "_"
 ROOT_VALUE_PLACEHOLDER = "_ROOT_"
 NONE_VALUE_PLACEHOLDER = "_NONE_"
@@ -111,6 +113,23 @@ class Sentence:
     def add_token(self, token: Token):
         self.tokens.append(token)
         return self
+
+    def to_tree(self) -> WDG:
+        tree = WDG()
+        for token in self:
+            if token.id_ == 0:
+                continue
+            tree.add_edge(token.head, token.id_)
+        return tree
+
+    def set_heads(self, tree: WDG):
+        for token in self:
+            if token.id_ == 0:
+                continue
+            if len(tree.get_head_ids(token.id_)) != 1:
+                continue
+            head = tree.get_head_ids(token.id_)[0]
+            token.head = head
 
 
 @dataclass
