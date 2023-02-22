@@ -6,7 +6,7 @@ from src.tools.CONLL06 import TreeBank
 from src.tools.measurements import UAS
 
 
-def annotate_tree_bank(tree_bank_path: str, feature_dict_path: str, model_path: str):
+def evaluate_model(tree_bank_path: str, feature_dict_path: str, model_path: str):
     tree_bank = TreeBank.from_file(tree_bank_path)
     gold_tree_bank = TreeBank.from_file(tree_bank_path)
     feature_dict = TemplateWizard.create_feature_dict(None, feature_dict_path)
