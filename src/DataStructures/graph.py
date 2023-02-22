@@ -85,6 +85,18 @@ class WeightedDirectedGraph:
             graph.make_0_root()
         return graph
 
+    @staticmethod
+    def random_tree(size: int, seed: int = None):
+        tree = WeightedDirectedGraph(size=size)
+        if seed is not None:
+            np.random.seed(seed)
+        for node in tree.nodes:
+            if node == ROOT:
+                continue
+            head = np.random.randint(0, size+1)
+            tree.add_edge(node, head)
+        return tree
+
     def draw(self):
         figure, axis = plt.subplots()
 
@@ -240,6 +252,17 @@ class WeightedDirectedGraph:
     def get_head_ids(self, node_id: int) -> np.ndarray[int]:
         return np.nonzero(self._heads_slice(node_id))[0]
 
+    def get_head(self, node_id: int) -> int:
+        heads = self.get_head_ids(node_id)
+        if len(heads) != 1:
+            raise ValueError(f"Node does not have exactly one head. {heads}")
+        return heads[0]
+
+    def remove_head(self, node_id: int):
+        head = self.get_head(node_id)
+        self.remove_edge(head, node_id)
+        return self
+
     def get_dependent_ids(self, node_id: int) -> np.ndarray[int]:
         return np.nonzero(self._dependents_slice(node_id))[0]
 
@@ -288,6 +311,28 @@ class WeightedDirectedGraph:
 
     def weight_to_cycle(self, cycle: List[int], start_id: int, end_id: int) -> float:
         return self.get_edge_weight(start_id, end_id) + self.cycle_weight_minus_node(cycle, end_id)
+
+    def get_root_distances(self) -> dict[int, int]:
+        depth = 0
+        distances = {ROOT: depth}
+        dependents = list(self.get_dependent_ids(ROOT))
+        while dependents:
+            dependant = dependents.pop()
+            distances[dependant] = distances[self.get_head(dependant)] + 1
+            dependents += list(self.get_dependent_ids(dependant))
+        return distances
+
+    def get_next_sibling(self, node_id: int) -> int:
+        if not self.has_head(node_id):
+            return None
+        head = self.get_head(node_id)
+        siblings = list(self.get_dependent_ids(head))
+        next_sibling_index = siblings.index(node_id) + 1
+        siblings.remove(node_id)
+        if not siblings or len(siblings) <= next_sibling_index:
+            return None
+        return siblings[next_sibling_index]
+
 
 
 if __name__ == '__main__':

@@ -5,6 +5,7 @@ import numpy as np
 from tqdm import tqdm
 
 from src.decoder.graph.chuliuedmonds import mst
+from src.decoder.graph.greedy import greedy
 from src.features.template import TemplateWizard
 from src.tools.CONLL06 import TreeBank, Sentence
 from src.DataStructures.graph import WeightedDirectedGraph as WDG
@@ -42,7 +43,7 @@ class Perceptron:
                                  f"prev. UAS: {last_uas}% | "
                                  f"prev. CCT: {last_cct}% ")
             for instance_id, sentence in enumerate(iterator):
-                predicted_tree = self.predict(sentence.copy())
+                predicted_tree = self.predict_greedy(sentence.copy())
                 gold_tree = sentence.to_tree()
                 num_correct_edges += predicted_tree.count_common_edges(gold_tree)
                 num_total_edges += predicted_tree.number_of_edges
@@ -81,6 +82,13 @@ class Perceptron:
         tree.attach_loose_nodes()
         return tree
 
+    def score_tree(self, tree: WDG, sentence: Sentence):
+        feature_indices = self.get_feature_indices_from_tree(tree, sentence)
+        return self.weights[feature_indices].sum()
+
+    def predict_greedy(self, sentence: Sentence):
+        return greedy(sentence, self.score_tree)
+
     def predict(self, sentence: Sentence) -> WDG:
         full_tree = self._create_full_tree_from_sentence(sentence)
         pruned_tree = mst(full_tree).normalize()
@@ -106,7 +114,7 @@ class Perceptron:
         feature_indices = []
         for token in sentence:
             for dependant_id in tree.get_dependent_ids(token.id_):
-                feature_keys = TemplateWizard.get_feature_keys(token, dependant_id, sentence)
+                feature_keys = TemplateWizard.get_feature_keys(token, dependant_id, sentence, tree)
                 for feature_key in feature_keys:
                     try:
                         feature_indices.append(self.feature_dict[feature_key])
