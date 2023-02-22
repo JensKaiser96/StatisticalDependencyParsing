@@ -20,7 +20,7 @@ def mst(graph: WDGraph) -> WDGraph:
 
 def reduce(input_graph: WDGraph) -> WDGraph:
     output_graph = input_graph.copy()
-    for node_id in output_graph.node_ids:
+    for node_id in output_graph.nodes:
         output_graph.remove_all_heads_but_max(node_id)
     return output_graph
 
@@ -30,7 +30,7 @@ def contract(input_graph: WDGraph, cycle: list[int]) -> tuple[WDGraph, dict[int,
     cycle_node_id = len(contracted_graph) - 1
     out_mapping: dict[int, tuple[int, float]] = {}  # key is dependent, value is original (head, weight)
     in_mapping: dict[int, tuple[int, float]] = {}
-    for head in input_graph.node_ids:
+    for head in input_graph.nodes:
         for dependent in input_graph.get_dependent_ids(head):
             if head in cycle and dependent in cycle:  # do nothing
                 pass
