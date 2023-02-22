@@ -1,5 +1,6 @@
 from itertools import permutations
 
+import os
 import numpy as np
 from tqdm import tqdm
 
@@ -18,6 +19,9 @@ class Perceptron:
         self.logging = logging
 
     def save_weights(self, path: str):
+        dir_name = '/'.join(path.split('/')[:-1])
+        if not os.path.exists(dir_name):
+            os.mkdir(dir_name)
         np.save(path, self.weights, allow_pickle=True)
         return self
 
