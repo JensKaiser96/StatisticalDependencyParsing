@@ -16,14 +16,19 @@ from src.tools.CONLL06 import Token, Sentence, TreeBank
 
 HEAD = "HEAD"
 DEPE = "DEPE"
+
+LEMMA = "LEMMA"
 FORM = "FORM"
 POS = "POS"
 
 HEAD_FORM = f"{HEAD}_{FORM}"
 HEAD_POS = f"{HEAD}_{POS}"
+HEAD_LEMMA = f"{HEAD}_{LEMMA}"
 DEPE_FORM = f"{DEPE}_{FORM}"
 DEPE_POS = f"{DEPE}_{POS}"
-BASIC_FEATURES = (HEAD_FORM, HEAD_POS, DEPE_FORM, DEPE_POS)
+DEPE_LEMMA = f"{DEPE}_{LEMMA}"
+
+BASIC_FEATURES = (HEAD_FORM, HEAD_POS, HEAD_LEMMA, DEPE_FORM, DEPE_POS, DEPE_LEMMA)
 
 BETW = "BETW"
 NEXT = "NEXT"
@@ -80,8 +85,10 @@ class TemplateWizard:
                 token = TemplateWizard._get_relevant_token(feature, head, dependant, sentence)
                 if FORM in feature:
                     key += f"{feature}_<{token.form}>,"
-                else:
+                elif DEPE in feature:
                     key += f"{feature}_<{token.pos}>,"
+                elif LEMMA in feature:
+                    key += f"{feature}_<{token.lemma}>,"
             keys.append(key)
         return keys
 
