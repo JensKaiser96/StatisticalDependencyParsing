@@ -94,13 +94,13 @@ class TemplateWizard:
         else:  # BETW
             betw_id = (head.id_ + dependent.id_) / 2
             if abs(head.id_ - betw_id) == 1:
-                relevant_token = sentence[int(betw_id)]
+                relevant_token = sentence.get_token_or_none_token(int(betw_id))
             else:
                 relevant_token = Token.create_none()
         if NEXT in feature:
-            relevant_token = sentence.get_token_or_null_token(relevant_token.id_ + 1)
+            relevant_token = sentence.get_token_or_none_token(relevant_token.id_ + 1)
         if PREV in feature:
-            relevant_token = sentence.get_token_or_null_token(relevant_token.id_ - 1)
+            relevant_token = sentence.get_token_or_none_token(relevant_token.id_ - 1)
         return relevant_token
 
     @staticmethod
