@@ -112,12 +112,14 @@ class TemplateWizard:
         feature_dict = {}
         index = 0
         for sentence in tqdm(tree_bank):
+            tree = sentence.to_tree()
             for token in sentence:
-                feature_keys = TemplateWizard.get_feature_keys(token.head, token, sentence)
-                for feature_key in feature_keys:
-                    if feature_key not in feature_dict:
-                        feature_dict[feature_key] = index
-                        index += 1
+                for dependent in tree.get_dependent_ids(token.id_):
+                    feature_keys = TemplateWizard.get_feature_keys(token, dependent, sentence)
+                    for feature_key in feature_keys:
+                        if feature_key not in feature_dict:
+                            feature_dict[feature_key] = index
+                            index += 1
         TemplateWizard.save_dict(feature_dict, path)
         return feature_dict
 
