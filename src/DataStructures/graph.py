@@ -42,7 +42,7 @@ class WeightedDirectedGraph:
 
     def to_nx(self) -> nx.DiGraph:
         nxg = nx.DiGraph()
-        for node in self.node_ids:
+        for node in self.nodes:
             for head in self.get_head_ids(node):
                 nxg.add_edge(head, node, weight=self.get_edge_weight(head, node))
         return nxg
@@ -65,25 +65,6 @@ class WeightedDirectedGraph:
     def normalize(self):
         self.data[self.data > 0] = 1
         return self
-
-    def compare(self, other: "WeightedDirectedGraph", verbose=False) -> float:
-        """
-        returns percentage of matching edges, UAS-like
-        """
-        if verbose and (self.number_of_nodes != other.number_of_nodes or self.number_of_edges != other.number_of_edges):
-            print(f"self:  {self.number_of_nodes} nodes, {self.number_of_edges} edges.\n"
-                  f"other: {other.number_of_nodes} nodes, {other.number_of_edges} edges.\n")
-        correct = 0
-        total = 0
-        for node in self.node_ids:
-            for dependants in self.get_dependent_ids(node):
-                try:
-                    if other.get_edge_weight(node, dependants) > 0:
-                        correct += 1
-                except IndexError:
-                    pass
-                total += 1
-        return correct/max(total, 1)
 
     def count_common_edges(self, other: "WeightedDirectedGraph") -> int:
         try:
@@ -116,7 +97,7 @@ class WeightedDirectedGraph:
             y = math.sin(phi * node_id)
             return x, y
 
-        for node_id in self.node_ids:
+        for node_id in self.nodes:
             plt.text(*pos(node_id), node_id,
                      verticalalignment='center', horizontalalignment='center',
                      bbox=dict(boxstyle="circle"))
@@ -149,7 +130,7 @@ class WeightedDirectedGraph:
         return np.count_nonzero(self.data)
 
     @property
-    def node_ids(self) -> List[int]:
+    def nodes(self) -> List[int]:
         return [node_id for node_id in range(self.number_of_nodes)]
 
     def _heads_slice(self, node_id) -> np.ndarray:
@@ -175,8 +156,8 @@ class WeightedDirectedGraph:
         largest_index = max(start_id, end_id)
         if largest_index >= self.number_of_nodes:
             self._expand_data_table(largest_index + 1)
-        if self.data[start_id, end_id] and check_for_duplicate:
-            raise ValueError(f"Edge ({start_id},{end_id}) already exitst")
+        if check_for_duplicate and self.data[start_id, end_id]:
+            raise ValueError(f"Edge ({start_id},{end_id}) already exists")
         self.data[start_id, end_id] = weight
         return self
 
@@ -184,24 +165,20 @@ class WeightedDirectedGraph:
         self.add_edge(start_id, end_id, weight, check_for_duplicate=False)
         return self
 
-    def remove_edge(self, start_id: int, end_id: int):
-        if not self.data[start_id, end_id]:
+    def remove_edge(self, start_id: int, end_id: int, strict=False):
+        if strict and not self.data[start_id, end_id]:
             raise ValueError(f"No edge from '{start_id}' to '{end_id}' in graph.")
         self.data[start_id, end_id] = 0
         return self
 
-    def remove_all_heads_but_max(self, node_id: int, cycle: List[int] = None):
+    def remove_all_heads_but_max(self, node_id: int):
         # safe index and value
-        max_head_id = self.get_max_head(node_id, cycle)
+        max_head_id = self.get_max_head(node_id)
         if max_head_id is None:
-            return
+            return self
         max_head_value = self.data[max_head_id, node_id]
 
-        # set all to 0
-        if cycle is None:
-            self.data[:, node_id] = 0
-        else:
-            self.data[cycle, node_id] = 0
+        self.data[:, node_id] = 0
         self.data[max_head_id, node_id] = max_head_value  # restore value at index
         return self
 
@@ -210,14 +187,10 @@ class WeightedDirectedGraph:
             raise ValueError(f"No edge from '{start_id}' to '{end_id}' in graph.")
         return self.data[start_id, end_id]
 
-    def get_max_head(self, node_id: int, cycle: List[int]) -> int | None:
+    def get_max_head(self, node_id: int) -> int | None:
         if not self.has_head(node_id):
             return None
-        if cycle:
-            # returns the id out of the given cycle that has the highest edge to node_id
-            return cycle[self.data[cycle, node_id].argmax()]
-        else:
-            return self._heads_slice(node_id).argmax()
+        return self._heads_slice(node_id).argmax()
 
     def add_node(self, index=0):
         """
@@ -253,18 +226,16 @@ class WeightedDirectedGraph:
 
     def cut_incoming_to_node(self, node_id: int):
         self.data[:, node_id] = 0
-
-    def cut_incoming_to_cycle(self, cycle: List[int]):
-        for node in cycle:
-            self.cut_incoming_to_node(node)
+        return self
 
     def has_head(self, node_id: int) -> bool:
         return bool(self._heads_slice(node_id).max())
 
     def attach_loose_nodes(self):
-        for node in self.node_ids:
+        for node in self.nodes:
             if self.has_head(node) and node != ROOT:
                 self.add_edge(ROOT, node)
+        return self
 
     def get_head_ids(self, node_id: int) -> np.ndarray[int]:
         return np.nonzero(self._heads_slice(node_id))[0]
@@ -273,7 +244,7 @@ class WeightedDirectedGraph:
         return np.nonzero(self._dependents_slice(node_id))[0]
 
     def has_dangling_nodes(self) -> bool:
-        for node_id in self.node_ids:
+        for node_id in self.nodes:
             if node_id == ROOT:
                 continue
             if not self.has_head(node_id):
@@ -284,15 +255,15 @@ class WeightedDirectedGraph:
         no_root_head = not self.has_head(ROOT)
         num_edges_vs_num_nodes = (self.number_of_edges == (self.number_of_nodes - 1))
         no_dangling_nodes = not self.has_dangling_nodes()
-        one_head_per_node = all([len(self.get_head_ids(node_id)) <= 1 for node_id in self.node_ids])
+        one_head_per_node = all([len(self.get_head_ids(node_id)) <= 1 for node_id in self.nodes])
 
         return no_root_head and num_edges_vs_num_nodes and no_dangling_nodes and one_head_per_node
 
     def find_cycle(self) -> List[int]:
         paths = {node_id: [[node_id, dependent] for dependent in self.get_dependent_ids(node_id)] for node_id in
-                 self.node_ids}
+                 self.nodes}
 
-        for _ in self.node_ids:  # any cycle is found after N iterations
+        for _ in self.nodes:  # any cycle is found after N iterations
             for node, old_paths in paths.items():
                 new_paths = []
                 for old_path in old_paths:
