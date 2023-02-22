@@ -6,28 +6,22 @@ from src.tools.measurements import UAS, LAS
 
 
 def main():
-    tb_path = "data/english/train/wsj_train.first-1k.conll06"
-    tb = TreeBank.from_file(tb_path)
-    feature_dict = TemplateWizard.create_feature_dict(tb, tb_path + ".feature_dict")
+    gold_tree_bank_path = "data/english/train/wsj_train.conll06"
+    tb = TreeBank.from_file(gold_tree_bank_path)
+    feature_dict = TemplateWizard.create_feature_dict(tb, gold_tree_bank_path + ".feature_dict")
 
-    tree_ = WDG().add_edge(0, 2).add_edge(2, 1).add_edge(2, 3)
-    # print(tree)
+    model = Perceptron(feature_dict, logging=False)
+    model_weight_path = f"data/models/{gold_tree_bank_path.split('/')[-1]}"
+    train = True
+    if train:
+        model.train(tb, 50, save_path=model_weight_path)
+    else:
+        model.load_weights(model_weight_path)
+    blind_tree_bank_path = "data/english/test/wsj_test.conll06.blind"
+    blind_tree_bank = TreeBank.from_file(blind_tree_bank_path)
+    model.annotate(blind_tree_bank)
 
-    model = Perceptron(feature_dict)
-    sentence = Sentence().add_token(
-        Token(1, form="I", pos="PRP", head=2)).add_token(
-        Token(2, form="love", pos="VB", head=0)).add_token(
-        Token(3, form="cats", pos="NNP", head=2))
-
-    #features = model._create_feature_vector(sentence)
-    # print(features)
-    tree = model.predict(sentence)
-
-    #indices = t.extract_feature_indices(tree, features)
-    #print(indices)
-    # tree.draw()
-
-    model.train(tb, 500, save_path="data/model/wsj_op_1k")
+    print(UAS(tb, blind_tree_bank))
 
 
 if __name__ == '__main__':
