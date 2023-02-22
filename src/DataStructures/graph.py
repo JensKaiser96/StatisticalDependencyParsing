@@ -2,6 +2,7 @@ import math
 from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
+import networkx as nx
 from matplotlib.patches import ConnectionStyle
 
 from src.tools.CONLL06 import Sentence
@@ -40,6 +41,28 @@ class WeightedDirectedGraph:
         copy = WeightedDirectedGraph()
         copy.data = self.data.copy()
         return copy
+
+    def to_nx(self) -> nx.DiGraph:
+        nxg = nx.DiGraph()
+        for node in self.node_ids:
+            for head in self.get_head_ids(node):
+                nxg.add_edge(head, node, weight=self.get_edge_weight(head, node))
+        return nxg
+
+    @staticmethod
+    def from_nx(nxg: nx.DiGraph) -> "WeightedDirectedGraph":
+        wdg = WeightedDirectedGraph()
+        for head, dependent, data in nxg.edges(data=True):
+            wdg.add_edge(head, dependent, data["weight"])
+        return wdg
+
+    def nx_cle(self):
+        """
+        only used to verify correctness of my CLE implementation
+        """
+        nxg = self.to_nx()
+        mst_nxg = nx.algorithms.tree.branchings.Edmonds(nxg).find_optimum(attr='weight', kind='max', style="aborescence", preserve_attrs=True)
+        return WeightedDirectedGraph.from_nx(mst_nxg)
 
     def normalize(self):
         self.data[self.data > 0] = 1
