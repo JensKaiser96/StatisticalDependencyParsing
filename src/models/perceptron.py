@@ -25,33 +25,33 @@ class Perceptron:
         self.weights = np.load(path, allow_pickle=True)
         return self
 
-    def train(self, tree_bank: TreeBank, epochs: int = 1, save_path="", logging=True):
-        print(f"Training started with {epochs=}...")
+    def train(self, tree_bank: TreeBank, epochs: int = 1, save_path=""):
+        last_uas = 0
+        last_cct = 0
         for epoch in range(epochs):
-            num_correct = 0
-            num_incorrect = 0
-            uases = []
-            if logging:
-                iterator = tqdm(tree_bank, desc=f"Epoch {epoch+1}/{epochs}")
-            else:
-                iterator = tree_bank
-            for sentence in iterator:
-                predicted_tree = self.predict(sentence)
-                gold_tree = WDG.from_sentence(sentence)
-                #predicted_tree.draw()
-                uases.append(predicted_tree.compare(gold_tree, verbose=False))
+            num_correct_trees = 0
+            num_incorrect_trees = 0
+            num_correct_edges = 0
+            num_total_edges = 0
+            iterator = tqdm(tree_bank,
+                            desc=f"Epoch {epoch+1}/{epochs} | "
+                                 f"prev. UAS: {last_uas}% | "
+                                 f"prev. CCT: {last_cct}% ")
+            for instance_id, sentence in enumerate(iterator):
+                predicted_tree = self.predict(sentence.copy())
+                gold_tree = sentence.to_tree()
+                num_correct_edges += predicted_tree.count_common_edges(gold_tree)
+                num_total_edges += predicted_tree.number_of_edges
                 if gold_tree != predicted_tree:
-                    gold_tree_indices = self.get_feature_indices_from_tree(gold_tree, sentence)
                     predicted_tree_indices = self.get_feature_indices_from_tree(predicted_tree, sentence)
-                    self.weights[gold_tree_indices] += 1
+                    gold_tree_indices = self.get_feature_indices_from_tree(gold_tree, sentence)
                     self.weights[predicted_tree_indices] -= 1
-                    num_incorrect += 1
+                    self.weights[gold_tree_indices] += 1
+                    num_incorrect_trees += 1
                 else:
-                    num_correct += 1
-            if logging:
-                print(f"\nEpoch ({epoch}/{epochs}): "
-                      f"{round(num_correct/(num_correct+num_incorrect), 2)}% correct "
-                      f"UAS: {np.array(uases).mean()}\n")
+                    num_correct_trees += 1
+            last_uas = round((num_correct_edges/num_total_edges)*100, 2)
+            last_cct = round(num_correct_trees/(num_correct_trees+num_incorrect_trees)*100, 2)
             tree_bank.shuffle()
             if save_path:
                 self.save_weights(save_path)
