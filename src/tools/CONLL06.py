@@ -93,7 +93,7 @@ class Sentence:
     tokens: List[Token]
 
     def __init__(self, tokens: List[Token] = None):
-        self.tokens = tokens if tokens else [Token.create_root()]
+        self.tokens = tokens.copy() if tokens else [Token.create_root()]
 
     def __getitem__(self, index) -> Token:
         return self.tokens[index]
@@ -101,7 +101,11 @@ class Sentence:
     def __len__(self):
         return len(self.tokens)
 
-    def get_token_or_null_token(self, index):
+    def copy(self) -> "Sentence":
+        new_sentence = Sentence(self.tokens.copy())
+        return new_sentence
+
+    def get_token_or_none_token(self, index):
         """
         returns Token at position <index>, if index is out of bounds, the special none token is returned
         """
