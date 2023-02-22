@@ -1,8 +1,7 @@
 from src.features.template import TemplateWizard
 from src.models.perceptron import Perceptron
-from src.DataStructures.graph import WeightedDirectedGraph as WDG
-from src.tools.CONLL06 import TreeBank, Sentence, Token
-from src.tools.measurements import UAS, LAS
+from src.tools.CONLL06 import TreeBank
+from src.tools.measurements import UAS
 
 
 def main():
