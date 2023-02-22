@@ -69,10 +69,10 @@ class TemplateWizard:
         "DEPE_FORM_<cats>,DEPE_POS_<NN>,", ...
         ]
         """
-        if isinstance(head, int):
-            head = sentence[head]
-        if isinstance(dependant, int):
-            dependant = sentence[dependant]
+        if not isinstance(head, Token):
+            head = sentence.get_token_or_none_token(head)
+        if not isinstance(dependant, Token):
+            dependant = sentence.get_token_or_none_token(dependant)
         keys = []
         for template in TemplateWizard.TEMPLATES:
             key = ""
