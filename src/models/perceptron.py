@@ -4,7 +4,6 @@ import numpy as np
 from tqdm import tqdm
 
 from src.decoder.graph.chuliuedmonds import mst
-# from test.decoder.chuliuedmonds_n2 import mst
 from src.features.template import TemplateWizard
 from src.tools.CONLL06 import TreeBank, Sentence
 from src.DataStructures.graph import WeightedDirectedGraph as WDG
@@ -64,7 +63,6 @@ class Perceptron:
         # tree = WDG.random(n)
         tree = WDG(size=n)
         all_arcs = permutations(range(n), 2)
-        missed_features = 0
         for head, dependent in all_arcs:
             feature_keys = TemplateWizard.get_feature_keys(head, dependent, sentence)
             arc_weight = 0
@@ -73,11 +71,8 @@ class Perceptron:
                     feature_index = self.feature_dict[feature_key]
                     arc_weight += self.weights[feature_index]
                 except KeyError:
-                    missed_features += 1
-            #print(f"adding edge ({head}) -> ({dependent}): {arc_weight}")
+                    pass
             tree.add_edge(head, dependent, max(arc_weight, 1))
-        if self.logging:
-            print(f"Missed features during creation:\t{missed_features}")
         tree.make_0_root()
         tree.attach_loose_nodes()
         return tree
@@ -85,9 +80,8 @@ class Perceptron:
     def predict(self, sentence: Sentence) -> WDG:
         full_tree = self._create_full_tree_from_sentence(sentence)
         pruned_tree = mst(full_tree).normalize()
-        if pruned_tree.number_of_nodes != pruned_tree.number_of_edges + 1:
-            print("Tree is missing edges.")
-            pass
+        if not pruned_tree.is_well_formed_tree() and self.logging:
+            print(f"Tree is not well formed")
         return pruned_tree
 
     def get_feature_indices_from_tree(self, tree: WDG, sentence: Sentence) -> list[int]:
