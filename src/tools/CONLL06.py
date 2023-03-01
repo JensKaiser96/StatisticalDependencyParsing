@@ -170,6 +170,8 @@ class TreeBank:
         with open(path, "w", encoding="utf-8") as f_out:
             for sentence in self.sentences:
                 for token in sentence.tokens:
+                    if token.id_ == 0:  # skip root
+                        continue
                     f_out.write(str(token) + "\n")
                 f_out.write("\n")
 
