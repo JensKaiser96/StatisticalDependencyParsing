@@ -13,23 +13,35 @@ from src.DataStructures.graph import WeightedDirectedGraph as WDG
 class Perceptron:
     weights: np.ndarray
 
-    def __init__(self, feature_dict: dict[str, int], logging=False):
-        self.feature_dict = feature_dict
-        self.weights = np.ones((len(feature_dict), ), dtype=int)
+    def __init__(self, tree_bank: TreeBank, path: str, logging=False):
+        self.path = path
+        self.feature_dict = TemplateWizard.create_feature_dict(tree_bank, path + ".feature_dict")
+        self.tree_bank = tree_bank
+        self.weights = np.ones((len(self.feature_dict), ), dtype=int)
         self.logging = logging
 
-    def save_weights(self, path: str):
+    def save(self, path: str = ""):
+        if not path:
+            path = self.path
+        self.save_weights(path)
+        TemplateWizard.save_dict(self.feature_dict, path + ".feature_dict")
+
+    def save_weights(self, path: str = ""):
+        if not path:
+            path = self.path
         dir_name = '/'.join(path.split('/')[:-1])
         if not os.path.exists(dir_name):
             os.mkdir(dir_name)
         np.save(path, self.weights, allow_pickle=True)
         return self
 
-    def load_weights(self, path: str):
+    def load_weights(self, path: str = ""):
+        if not path:
+            path = self.path
         self.weights = np.load(path, allow_pickle=True)
         return self
 
-    def train(self, tree_bank: TreeBank, epochs: int = 1, save_path=""):
+    def train(self, epochs: int = 1, save=True):
         last_uas = 0
         last_cct = 0
         for epoch in range(epochs):
@@ -37,18 +49,20 @@ class Perceptron:
             num_incorrect_trees = 0
             num_correct_edges = 0
             num_total_edges = 0
-            iterator = tqdm(tree_bank,
-                            desc=f"Epoch {epoch+1}/{epochs} | "
-                                 f"prev. UAS: {last_uas}% | "
-                                 f"prev. CCT: {last_cct}% ")
+            description = ""
+            if epochs > 1:
+                description = (f"Epoch {epoch + 1}/{epochs} | "
+                               f"prev. UAS: {last_uas}% | "
+                               f"prev. CCT: {last_cct}% ")
+            iterator = tqdm(self.tree_bank, desc=description)
             for instance_id, sentence in enumerate(iterator):
                 predicted_tree = self.predict(sentence.copy())
                 gold_tree = sentence.to_tree()
                 num_correct_edges += predicted_tree.count_common_edges(gold_tree)
                 num_total_edges += predicted_tree.number_of_edges
                 if gold_tree != predicted_tree:
-                    predicted_tree_indices = self.get_feature_indices_from_tree(predicted_tree, sentence)
-                    gold_tree_indices = self.get_feature_indices_from_tree(gold_tree, sentence)
+                    predicted_tree_indices = self.get_feature_indices_from_tree(predicted_tree, sentence, learn=True)
+                    gold_tree_indices = self.get_feature_indices_from_tree(gold_tree, sentence, learn=True)
                     self.weights[predicted_tree_indices] -= 1
                     self.weights[gold_tree_indices] += 1
                     num_incorrect_trees += 1
@@ -56,9 +70,11 @@ class Perceptron:
                     num_correct_trees += 1
             last_uas = round((num_correct_edges/num_total_edges)*100, 2)
             last_cct = round(num_correct_trees/(num_correct_trees+num_incorrect_trees)*100, 2)
-            tree_bank.shuffle()
-            if save_path:
-                self.save_weights(save_path)
+            self.tree_bank.shuffle()
+            if epochs == 1:
+                print(f"train UAS: {last_uas}, CCT: {last_cct}")
+            if save:
+                self.save()
 
     def _create_full_tree_from_sentence(self, sentence: Sentence) -> WDG:
         n = len(sentence)
@@ -96,7 +112,7 @@ class Perceptron:
             sentence.set_heads(tree)
         return annotated_treebank
 
-    def get_feature_indices_from_tree(self, tree: WDG, sentence: Sentence, strict=False) -> list[int]:
+    def get_feature_indices_from_tree(self, tree: WDG, sentence: Sentence, learn=False) -> list[int]:
         """
         returns a list of all feature indices which occur in a given tree and sentence.
         Method is used during training, to get the indices for the weights which will be updated.
@@ -113,6 +129,7 @@ class Perceptron:
                     try:
                         feature_indices.append(self.feature_dict[feature_key])
                     except KeyError:
-                        if strict:
-                            raise ValueError(f"Could not find index for feature {feature_key}. (and you wanted me to bitch about it (: )")
+                        if learn:
+                            self.feature_dict[feature_key] = len(self.feature_dict)
+                            self.weights = np.append(self.weights, np.ones((1,)))
         return feature_indices
