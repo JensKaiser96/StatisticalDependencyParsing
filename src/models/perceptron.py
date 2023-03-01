@@ -90,9 +90,11 @@ class Perceptron:
 
     def annotate(self, tree_bank: TreeBank):
         print("Annotating Tree Bank")
-        for sentence in tqdm(tree_bank):
+        annotated_treebank = tree_bank.copy()
+        for sentence in tqdm(annotated_treebank):
             tree = self.predict(sentence)
             sentence.set_heads(tree)
+        return annotated_treebank
 
     def get_feature_indices_from_tree(self, tree: WDG, sentence: Sentence, strict=False) -> list[int]:
         """

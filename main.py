@@ -34,7 +34,7 @@ def main():
     while dev_score > best_dev_score or tries < max_tries:
         model.train(train_treebank, 1, save_path=model_weight_path)
 
-        dev_pred = model.annotate(dev_treebank.copy())
+        dev_pred = model.annotate(dev_treebank)
         dev_score = UAS(dev_treebank, dev_pred)
 
         print(f"current UAS: {dev_score}, best: {best_dev_score}, tries: {tries}")
@@ -42,7 +42,7 @@ def main():
         if dev_score > best_dev_score:
             best_dev_score = dev_score
             tries = 0
-            test_pred = model.annotate(test_treebank.copy())
+            test_pred = model.annotate(test_treebank)
             test_pred.to_file(treebank["test"] + ".pred")
         else:
             tries += 1
