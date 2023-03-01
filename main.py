@@ -16,7 +16,7 @@ german_treebank = {
 }
 
 treebank = german_treebank
-load = False
+load = True
 
 
 def main():
@@ -24,20 +24,25 @@ def main():
     dev_treebank = TreeBank.from_file(treebank["dev"])
     test_treebank = TreeBank.from_file(treebank["test"])
 
-    model = Perceptron(train_treebank, treebank["model"])
-    if load:
-        model.load_weights()
-
     best_dev_score = 0
     dev_score = 0
     max_tries = 3
     tries = 0
 
+    model = Perceptron(train_treebank, treebank["model"])
+    if load:
+        model.load_weights()
+        dev_pred = model.annotate(dev_treebank)
+        dev_score = UAS(TreeBank.from_file(treebank["dev"]), dev_pred)
+        best_dev_score = dev_score
+
+        print(f"dev UAS: {dev_score}")
+
     while dev_score > best_dev_score or tries < max_tries:
         model.train()
 
         dev_pred = model.annotate(dev_treebank)
-        dev_score = UAS(dev_treebank, dev_pred)
+        dev_score = UAS(TreeBank.from_file(treebank["dev"]), dev_pred)
 
         print(f"dev UAS: {dev_score}, best: {best_dev_score}")
 
