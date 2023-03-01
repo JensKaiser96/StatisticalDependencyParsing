@@ -38,6 +38,8 @@ class Perceptron:
     def load_weights(self, path: str = ""):
         if not path:
             path = self.path
+        if not path.endswith(".npy"):
+            path += ".npy"
         self.weights = np.load(path, allow_pickle=True)
         return self
 
