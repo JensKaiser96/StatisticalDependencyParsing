@@ -56,7 +56,7 @@ class Perceptron:
                                f"prev. UAS: {last_uas}% | "
                                f"prev. CCT: {last_cct}% ")
             iterator = tqdm(self.tree_bank, desc=description)
-            for instance_id, sentence in enumerate(iterator):
+            for i, sentence in enumerate(iterator):
                 predicted_tree = self.predict(sentence.copy())
                 gold_tree = sentence.to_tree()
                 num_correct_edges += predicted_tree.count_common_edges(gold_tree)
@@ -69,11 +69,13 @@ class Perceptron:
                     num_incorrect_trees += 1
                 else:
                     num_correct_trees += 1
+                if i % 500 == 0:
+                    print(f"train UAS: {round((num_correct_edges/max(num_total_edges, 1)*100), 2)}")
             last_uas = round((num_correct_edges/num_total_edges)*100, 2)
             last_cct = round(num_correct_trees/(num_correct_trees+num_incorrect_trees)*100, 2)
             self.tree_bank.shuffle()
             if epochs == 1:
-                print(f"train UAS: {last_uas}, CCT: {last_cct}")
+                print(f"final train UAS: {last_uas}, CCT: {last_cct}")
             if save:
                 self.save()
 
