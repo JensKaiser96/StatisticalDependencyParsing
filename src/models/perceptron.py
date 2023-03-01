@@ -61,7 +61,7 @@ class Perceptron:
                                f"prev. CCT: {last_cct}% ")
             iterator = tqdm(self.tree_bank, desc=description)
             for i, sentence in enumerate(iterator):
-                predicted_tree = self.predict(sentence.copy())
+                predicted_tree = self.predict(sentence.copy(), learn=True)
                 gold_tree = sentence.to_tree()
                 num_correct_edges += predicted_tree.count_common_edges(gold_tree)
                 num_total_edges += predicted_tree.number_of_edges
@@ -83,7 +83,7 @@ class Perceptron:
             if save:
                 self.save()
 
-    def _create_full_tree_from_sentence(self, sentence: Sentence) -> WDG:
+    def _create_full_tree_from_sentence(self, sentence: Sentence, learn=False) -> WDG:
         n = len(sentence)
         # initialize with random values between 0 and 1, should not affect mst result due to low values
         # having these values prevents too sparse trees
@@ -98,14 +98,16 @@ class Perceptron:
                     feature_index = self.feature_dict[feature_key]
                     arc_weight += self.weights[feature_index]
                 except KeyError:
-                    pass
+                    if learn:
+                        self.feature_dict[feature_key] = len(self.feature_dict)
+                        self.weights = np.append(self.weights, np.ones((1,)))
             tree.add_edge(head, dependent, max(arc_weight, 1))
         tree.make_0_root()
         tree.attach_loose_nodes()
         return tree
 
-    def predict(self, sentence: Sentence) -> WDG:
-        full_tree = self._create_full_tree_from_sentence(sentence)
+    def predict(self, sentence: Sentence, learn=False) -> WDG:
+        full_tree = self._create_full_tree_from_sentence(sentence, learn)
         pruned_tree = mst(full_tree).normalize()
         if not pruned_tree.is_well_formed_tree() and self.logging:
             print(f"Tree is not well formed")
