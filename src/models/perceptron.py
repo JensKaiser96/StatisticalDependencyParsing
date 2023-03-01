@@ -42,6 +42,7 @@ class Perceptron:
         return self
 
     def train(self, epochs: int = 1, save=True):
+        print(f"Training for {epochs} epoch(s)...")
         last_uas = 0
         last_cct = 0
         for epoch in range(epochs):
