@@ -73,7 +73,7 @@ class Perceptron:
                     num_incorrect_trees += 1
                 else:
                     num_correct_trees += 1
-                if i % 500 == 0:
+                if i % 1000 == 0:
                     print(f"train UAS: {round((num_correct_edges/max(num_total_edges, 1)*100), 2)}")
             last_uas = round((num_correct_edges/num_total_edges)*100, 2)
             last_cct = round(num_correct_trees/(num_correct_trees+num_incorrect_trees)*100, 2)
