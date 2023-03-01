@@ -149,6 +149,9 @@ class TreeBank:
     def __len__(self):
         return len(self.sentences)
 
+    def copy(self):
+        return TreeBank(self.sentences.copy())
+
     @staticmethod
     def from_file(tree_bank_path: str):
         tree_bank = TreeBank()
