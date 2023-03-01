@@ -21,6 +21,7 @@ class Perceptron:
         self.logging = logging
 
     def save(self, path: str = ""):
+        print("saving model...")
         if not path:
             path = self.path
         self.save_weights(path)
@@ -36,6 +37,7 @@ class Perceptron:
         return self
 
     def load_weights(self, path: str = ""):
+        print("loading model...")
         if not path:
             path = self.path
         if not path.endswith(".npy"):
@@ -110,7 +112,7 @@ class Perceptron:
         return pruned_tree
 
     def annotate(self, tree_bank: TreeBank):
-        print("Annotating Tree Bank")
+        print("Annotating Tree Bank...")
         annotated_treebank = tree_bank.copy()
         for sentence in tqdm(annotated_treebank):
             tree = self.predict(sentence)
