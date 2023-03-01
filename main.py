@@ -15,6 +15,7 @@ german_treebank = {
 }
 
 treebank = german_treebank
+load = False
 
 
 def main():
@@ -25,6 +26,8 @@ def main():
     feature_dict = TemplateWizard.create_feature_dict(train_treebank, treebank["train"] + ".feature_dict")
     model = Perceptron(feature_dict, logging=False)
     model_weight_path = f"data/models/{treebank['train'].split('/')[-1]}"
+    if load:
+        model.load_weights(model_weight_path)
 
     best_dev_score = 0
     dev_score = 0
@@ -33,6 +36,7 @@ def main():
 
     while dev_score > best_dev_score or tries < max_tries:
         model.train(train_treebank, 1, save_path=model_weight_path)
+        model.save_weights(model_weight_path)
 
         dev_pred = model.annotate(dev_treebank)
         dev_score = UAS(dev_treebank, dev_pred)
